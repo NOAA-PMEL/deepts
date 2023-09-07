@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output, State, no_update, callback_context
+from dash import Dash, dcc, html, Input, Output, State, no_update, callback_context, exceptions
 import dash_design_kit as ddk
 import plotly.express as px
 import plotly.graph_objects as go
@@ -9,7 +9,9 @@ import os
 import datetime
 import constants
 import db
+import json
 from sdig.erddap.info import Info
+import colorcet as cc
 
 app = app = Dash(__name__,
                 external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP])
@@ -19,40 +21,37 @@ ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
 version = .1
 
-d_format = "%Y-%m-%d"
+with open("config/sites.json", "r+") as site_file:
+    site_json = json.load(site_file)
+
+for site in site_json:
+    url = site_json[site]['url']
+    info = Info(url)
+    start_date, end_date, start_date_seconds, end_date_seconds = info.get_times()
+    variables, long_names, units, stardard_names, var_types = info.get_variables()
+
+    startdt = datetime.datetime.fromtimestamp(start_date_seconds)
+    enddt = datetime.datetime.fromtimestamp(end_date_seconds)
+
+    days = enddt - startdt
+
+    time_marks = Info.get_time_marks(start_date_seconds, end_date_seconds)
+    site_json[site]['start_date'] = start_date
+    site_json[site]['end_date'] = end_date
+    site_json[site]['start_date_seconds'] = start_date_seconds
+    site_json[site]['end_date_seconds'] = end_date_seconds
+    site_json[site]['long_names'] = long_names
+    site_json[site]['time_marks'] = time_marks
+
 month_step = 60*60*24*30.25
-url = constants.url1
-
+obs_day = 12*21
 observation_count = 13657673
-
-info = Info(url)
-start_date, end_date, start_date_seconds, end_date_seconds = info.get_times()
-variables, long_names, units, stardard_names, var_types = info.get_variables()
-
-startdt = datetime.datetime.fromtimestamp(start_date_seconds)
-enddt = datetime.datetime.fromtimestamp(end_date_seconds)
-
-days = enddt - startdt
-
-obs_day = observation_count/days.days
-
-# Only one so set all_
-all_start_seconds = start_date_seconds
-all_end_seconds = end_date_seconds
-
-all_start = start_date
-all_end = end_date
-
-time_marks = Info.get_time_marks(start_date_seconds, end_date_seconds)
-
-locations_df = pd.read_csv('https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_microcat.csv?site_code%2Clatitude%2Clongitude&distinct()', skiprows=[1])
-locations_df = locations_df.mean()
-locations_df = locations_df.reset_index().pivot_table(columns='index')
 
 app.layout = html.Div([
     html.Div(id='kick'),
     dcc.Store(id='initial-time-start'),  # time from initial load query string
     dcc.Store(id='initial-time-end'),  # time from initial load query string
+    dcc.Store(id='site-code'),
     dbc.Navbar(
         dbc.Row(style={'width': '100%'}, align="center", children=[
             dbc.Col(width=2, children=[
@@ -103,31 +102,27 @@ app.layout = html.Div([
                 ])  
             ]),
             dbc.Card(children=[
-                dbc.CardHeader(children=['In the selected time range:']),
+                dbc.CardHeader(children=['Time range: (n.b. MOVE1 will only work with about 5 days of data right now.)']),
                 dbc.Row(children=[
                     dbc.Col(width=6, children=[
                         dbc.Card(children=[
                             dbc.CardHeader(children=['Start Date']),
                         ]),
-                        dbc.Input(id='start-date', debounce=True, value=all_start)
+                        dbc.Input(id='start-date', debounce=True, )
                     ]),
                     dbc.Col(width=6, children=[
                         dbc.Card(children=[
                             dbc.CardHeader(children=['End Date']),
                         ]),
-                        dbc.Input(id='end-date', debounce=True, value=all_end)
+                        dbc.Input(id='end-date', debounce=True, )
                     ])
                 ]),
                 dbc.Row(children=[
                     dbc.Col(width=12, children=[
                         html.Div(style={'padding-right': '40px', 'padding-left': '40px',
                                         'padding-top': '20px', 'padding-bottom': '45px'}, children=[
-                            dcc.RangeSlider(id='time-range-slider',
-                                            value=[all_start_seconds,all_end_seconds],
-                                            min=all_start_seconds,
-                                            max=all_end_seconds,
+                            dcc.RangeSlider(id='time-range-slider',                                           
                                             step=month_step,
-                                            marks=time_marks,
                                             updatemode='mouseup',
                                             allowCross=False)
                         ])
@@ -143,6 +138,14 @@ app.layout = html.Div([
             [
                 dbc.CardHeader('Profile Plot'),
                 dbc.CardBody(dcc.Loading(ddk.Graph(id='profile-graph')))
+            ]
+        ),
+    ]),
+    dbc.Row(children=[
+        dbc.Card(
+            [
+                dbc.CardHeader('Timeseries Plot'),
+                dbc.CardBody(dcc.Loading(ddk.Graph(id='timeseries-graph')))
             ]
         ),
     ]),
@@ -200,22 +203,68 @@ def toggle_modal(n1, n2, is_open):
 
 @app.callback(
     [
+        Output('site-code', 'data'),
+        Output('start-date', 'value', allow_duplicate=True),
+        Output('end-date', 'value', allow_duplicate=True),
+        Output('time-range-slider', 'value', allow_duplicate=True),
+        Output('time-range-slider', 'min'),
+        Output('time-range-slider', 'max'),
+        Output('time-range-slider', 'marks'),
+        Output('initial-time-start', 'data'),
+        Output('initial-time-end', 'data')
+    ],
+    [
+        Input('location-graph', 'clickData')
+    ], prevent_initial_call=True
+)
+def set_selected_site(in_click):
+    if in_click is not None:
+        point = in_click['points'][0]
+        site = point['customdata']
+       
+        return [site, 
+                site_json[site]['start_date'], 
+                site_json[site]['end_date'], 
+                [site_json[site]['start_date_seconds'], site_json[site]['end_date_seconds']], 
+                site_json[site]['start_date_seconds'], 
+                site_json[site]['end_date_seconds'], 
+                site_json[site]['time_marks'],
+                site_json[site]['start_date_seconds'], 
+                site_json[site]['end_date_seconds'], 
+                ]
+    return no_update
+
+
+@app.callback(
+    [
         Output('location-graph', 'figure'),
     ],
     [
-        Input('kick', 'n_clicks')
+        Input('kick', 'n_clicks'),
+        Input('site-code', 'data')
     ]
 )
-def update_location_map(kick):
+def update_location_map(kick, in_site_code):
+    locations_df = db.get_locations()
     figure = go.Figure()
-    yellow_trace = go.Scattermapbox(lat=locations_df['latitude'].values,
+    black_trace = go.Scattermapbox(lat=locations_df['latitude'].values,
                                 lon=locations_df['longitude'].values,
-                                hovertext=['MOVE1'],
+                                hovertext=locations_df['site_code'],
                                 hoverinfo='lat+lon+text',
-                                customdata=['MOVE1'],
-                                marker={'color': 'yellow', 'size': 15},
+                                customdata=locations_df['site_code'],
+                                marker={'color': 'black', 'size': 15},
                                 mode='markers')
-    figure.add_trace(yellow_trace)
+    figure.add_trace(black_trace)
+    if in_site_code is not None:
+        yellow_df = locations_df.loc[locations_df['site_code'] == in_site_code]
+        yellow_trace = go.Scattermapbox(lat=yellow_df['latitude'].values,
+                            lon=yellow_df['longitude'].values,
+                            hovertext=[in_site_code],
+                            hoverinfo='lat+lon+text',
+                            customdata=[in_site_code],
+                            marker={'color': 'yellow', 'size': 15},
+                            mode='markers')
+        figure.add_trace(yellow_trace)
     figure.update_layout(
         showlegend=False,
         mapbox_style="white-bg",
@@ -230,7 +279,7 @@ def update_location_map(kick):
             }
         ],
         mapbox_zoom=2,
-        mapbox_center={'lat': locations_df['latitude'].values[0], 'lon': locations_df['longitude'].values[0]},
+        mapbox_center={'lat': locations_df['latitude'].mean(), 'lon': locations_df['longitude'].mean()},
         margin={"r": 0, "t": 0, "l": 0, "b": 0},
         legend=dict(
             orientation="v",
@@ -244,23 +293,31 @@ def update_location_map(kick):
 @app.callback(
     [
         Output('profile-graph', 'figure'),
+        Output('timeseries-graph', 'figure'),
         Output('download-body', 'children'),
         Output('download-button', 'disabled')
     ],
     [
-        Input('kick', 'n_clicks'),
+        Input('site-code', 'data'),
         Input('variable', 'value'),
         Input('start-date', 'value'),
         Input('end-date', 'value')
     ]
 )
-def update_profile_plot(kick, in_variable, p_in_start_date, p_in_end_date):
+def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
+    if in_site is None:
+        return no_update
+    variables = site_json[in_site]['variables'].copy()
+    variables.append('time')
+    variables.append('depth')
+    variables.append('site_code')
+    url = site_json[in_site]['url']
     list_group = html.Div()
     list_group.children = []
     link_group = dbc.ListGroup(horizontal=True)
     link_group.children = []
     list_group.children.append(link_group)
-    meta_item = dbc.ListGroupItem('MOVE1 ', href=url, target='_blank')
+    meta_item = dbc.ListGroupItem(in_site + ': ', href=url, target='_blank')
     link_group.children.append(meta_item)
     if in_variable is None or len(in_variable) == 0:
         return no_update
@@ -271,139 +328,163 @@ def update_profile_plot(kick, in_variable, p_in_start_date, p_in_end_date):
         cs=px.colors.sequential.Inferno            
     get_vars = ','.join(variables)
     time_con = '&time>='+p_in_start_date+'&time<='+p_in_end_date
-    p_startdt = datetime.datetime.strptime(p_in_start_date, d_format)
-    p_enddt = datetime.datetime.strptime(p_in_end_date, d_format)
-    days = p_enddt - p_startdt
-    estim_obs = days.days*obs_day
-    factor = (20000/estim_obs)*100.
-    print('The factor is ', factor)
-    if factor < 5:
-        print('Reducing sample by a factor of ' + str(factor))
-        t0 = datetime.datetime.now()
-        df = db.get_some(factor)
-        df = df.loc[(df['time']>=p_in_start_date) & (df['time']<p_in_end_date)]
-        p_title = long_names[in_variable] + ' (sub-sampled: Showing ' + str(df.shape[0]) + ' points of ~' + str(round(estim_obs)) + ') at MOVE1'
-        print('Finsihed: ', (datetime.datetime.now() - t0), ' seconds for ', days.days+2, ' days or estimated ', estim_obs, ' observations, with a final sample size of ', df.shape[0])
-    else:    
-        print('Getting full resolution with ' + str(estim_obs) + ' points expected.')
-        t0 = datetime.datetime.now()
-        df = db.get_between('MOVE1', p_in_start_date, p_in_end_date)
-        p_title = long_names[in_variable] + ' at MOVE1'
-        if df.shape[0] > 20000:
-            df_actual = df.shape[0]
-            df = df.sample(20000)
-            p_title = long_names[in_variable] + ' (sub-sampled: Showing ' + str(df.shape[0]) + ' points of ~' + str(round(df_actual)) + ') at MOVE1' 
-        print('Finsihed: ', (datetime.datetime.now() - t0), ' seconds for ', days.days+2, ' days or estimated ', estim_obs, ' observations, with a final sample size of ', df.shape[0])
-    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title)
-    figure.update_yaxes(autorange='reversed')
+    depth_con = ''
+    if site_json[in_site]['minimum_depth'] != 'none':
+        depth_con = '&depth>=' + str(site_json[in_site]['minimum_depth'])
+    p_startdt = datetime.datetime.strptime(p_in_start_date, constants.d_format)
+    p_enddt = datetime.datetime.strptime(p_in_end_date, constants.d_format)
+    p_title = in_variable + ' at ' + in_site
     p_url = url
-    p_url = p_url + '.csv?' + get_vars + time_con + '&site_code="MOVE1"'
+    p_url = p_url + '.csv?' + get_vars + time_con 
     item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
     link_group.children.append(item)
     item = dbc.ListGroupItem('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
     link_group.children.append(item)
     item = dbc.ListGroupItem('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
     link_group.children.append(item)
-    return [figure, list_group, False]
+    print(p_url)
+    df = pd.read_csv(p_url, skiprows=[1])
+    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title)
+    figure.update_yaxes(autorange='reversed')
+
+    df.loc[:, 'time'] = pd.to_datetime(df['time'])
+    ts = go.Figure()
+    for idx, d in enumerate(df['depth'].unique()):
+        pdf = df.loc[df['depth'] == d]
+        pdf = pdf.set_index('time')    
+        pdf = pdf.asfreq(freq='1H')
+        pdf = pdf.reset_index()
+        pts = px.line(pdf, x='time', y=in_variable, hover_data=['depth', 'time', in_variable])
+        pts.update_traces(connectgaps=False, line_color=cc.b_glasbey_bw_minc_20[idx], name=str(d), showlegend=True)
+        ts.add_traces(list(pts.select_traces()))
+    ts.update_layout(showlegend=True)
+    return [figure, ts, list_group, False]
 
 
 @app.callback(
     [
-        Output('time-range-slider', 'value'),
-        Output('start-date', 'value'),
-        Output('end-date', 'value')
+        Output('time-range-slider', 'value', allow_duplicate=True),
+        Output('start-date', 'value', allow_duplicate=True),
+        Output('end-date', 'value', allow_duplicate=True)
     ],
     [
         Input('time-range-slider', 'value'),
         Input('start-date', 'value'),
-        Input('end-date', 'value'),
-        Input('initial-time-start', 'data'),
-        Input('initial-time-end', 'data')
+        Input('end-date', 'value')
+    ],
+    [
+        State('initial-time-start', 'data'),
+        State('initial-time-end', 'data')
     ], prevent_initial_call=True
 )
 def set_date_range_from_slider(slide_values, in_start_date, in_end_date, initial_start, initial_end):
+    # ctx = callback_context
+    # trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    # if trigger_id == 'initial-time-start' or trigger_id == 'initial-time-end':
+    #     start_output = initial_start
+    #     end_output = initial_end
+    #     try:
+    #         in_start_date_obj = datetime.datetime.strptime(initial_start, constants.d_format)
+    #         start_seconds = in_start_date_obj.timestamp()
+    #     except:
+    #         start_seconds = all_start_seconds
+
+    #     try:
+    #         in_end_date_obj = datetime.datetime.strptime(initial_end, constants.d_format)
+    #         end_seconds = in_end_date_obj.timestamp()
+    #     except:
+    #         end_seconds = all_end_seconds
+
+    # else:
+    if slide_values is None:
+        raise exceptions.PreventUpdate
+
+    range_min = initial_start
+    range_max = initial_end
+
     ctx = callback_context
     trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if trigger_id == 'initial-time-start' or trigger_id == 'initial-time-end':
-        start_output = initial_start
-        end_output = initial_end
-        try:
-            in_start_date_obj = datetime.datetime.strptime(initial_start, d_format)
-            start_seconds = in_start_date_obj.timestamp()
-        except:
-            start_seconds = all_start_seconds
+    start_seconds = slide_values[0]
+    end_seconds = slide_values[1]
 
-        try:
-            in_end_date_obj = datetime.datetime.strptime(initial_end, d_format)
-            end_seconds = in_end_date_obj.timestamp()
-        except:
-            end_seconds = all_end_seconds
+    start_output = in_start_date
+    end_output = in_end_date
 
+    if trigger_id == 'start-date':
+        try:
+            in_start_date_obj = datetime.datetime.strptime(in_start_date, constants.d_format)
+        except:
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+        start_output = in_start_date_obj.date().strftime(constants.d_format)
+        start_seconds = in_start_date_obj.timestamp()
+        if start_seconds < range_min:
+            start_seconds = range_min
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+            start_output = in_start_date_obj.date().strftime(constants.d_format)
+        elif start_seconds > range_max:
+            start_seconds = range_max
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+            start_output = in_start_date_obj.date().strftime(constants.d_format)
+        elif start_seconds > end_seconds:
+            start_seconds = end_seconds
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+            start_output = in_start_date_obj.date().strftime(constants.d_format)
+    elif trigger_id == 'end-date':
+        try:
+            in_end_date_obj = datetime.datetime.strptime(in_end_date, constants.d_format)
+        except:
+            in_end_date_obj = datetime.datetime.fromtimestamp((end_seconds))
+        end_output = in_end_date_obj.date().strftime(constants.d_format)
+        end_seconds = in_end_date_obj.timestamp()
+        if end_seconds < range_min:
+            end_seconds = range_min
+            in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
+            end_output = in_end_date_obj.date().strftime(constants.d_format)
+        elif end_seconds > range_max:
+            end_seconds = range_max
+            in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
+            end_output = in_end_date_obj.date().strftime(constants.d_format)
+        elif end_seconds < start_seconds:
+            end_seconds = start_seconds
+            in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
+            end_output = in_end_date_obj.date().strftime(constants.d_format)
+    elif trigger_id == 'time-range-slider':
+        in_start_date_obj = datetime.datetime.fromtimestamp(slide_values[0])
+        start_output = in_start_date_obj.strftime(constants.d_format)
+        in_end_date_obj = datetime.datetime.fromtimestamp(slide_values[1])
+        end_output = in_end_date_obj.strftime(constants.d_format)
     else:
-        if slide_values is None:
-            raise exceptions.PreventUpdate
-
-        range_min = all_start_seconds
-        range_max = all_end_seconds
-
-        ctx = callback_context
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-        start_seconds = slide_values[0]
-        end_seconds = slide_values[1]
-
-        start_output = in_start_date
-        end_output = in_end_date
-
-        if trigger_id == 'start-date':
-            try:
-                in_start_date_obj = datetime.datetime.strptime(in_start_date, d_format)
-            except:
-                in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
-            start_output = in_start_date_obj.date().strftime(d_format)
-            start_seconds = in_start_date_obj.timestamp()
-            if start_seconds < range_min:
-                start_seconds = range_min
-                in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
-                start_output = in_start_date_obj.date().strftime(d_format)
-            elif start_seconds > range_max:
-                start_seconds = range_max
-                in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
-                start_output = in_start_date_obj.date().strftime(d_format)
-            elif start_seconds > end_seconds:
-                start_seconds = end_seconds
-                in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
-                start_output = in_start_date_obj.date().strftime(d_format)
-        elif trigger_id == 'end-date':
-            try:
-                in_end_date_obj = datetime.datetime.strptime(in_end_date, d_format)
-            except:
-                in_end_date_obj = datetime.datetime.fromtimestamp((end_seconds))
-            end_output = in_end_date_obj.date().strftime(d_format)
-            end_seconds = in_end_date_obj.timestamp()
-            if end_seconds < range_min:
-                end_seconds = range_min
-                in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
-                end_output = in_end_date_obj.date().strftime(d_format)
-            elif end_seconds > range_max:
-                end_seconds = range_max
-                in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
-                end_output = in_end_date_obj.date().strftime(d_format)
-            elif end_seconds < start_seconds:
-                end_seconds = start_seconds
-                in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
-                end_output = in_end_date_obj.date().strftime(d_format)
-        elif trigger_id == 'time-range-slider':
-            in_start_date_obj = datetime.datetime.fromtimestamp(slide_values[0])
-            start_output = in_start_date_obj.strftime(d_format)
-            in_end_date_obj = datetime.datetime.fromtimestamp(slide_values[1])
-            end_output = in_end_date_obj.strftime(d_format)
+        return no_update
 
     return [[start_seconds, end_seconds],
             start_output,
             end_output
             ]
 
+
+def make_gaps(pdf, fre):
+    if pdf.shape[0] > 3:
+        # This magic inserts missing values between rows that are more than two deltas apart.
+        # Make time the index to the data
+        pdf2 = pdf.set_index('time')
+        pdf2 = pdf2[~pdf2.index.duplicated()]
+        # make a index at the expected delta
+        fill_dates = pd.date_range(pdf['time'].iloc[0], pdf['time'].iloc[-1], freq=fre)
+        # sprinkle the actual values out along the new time axis, by combining the regular
+        # intervals index and the data index
+        all_dates = fill_dates.append(pdf2.index)
+        all_dates = all_dates[~all_dates.duplicated()]
+        fill_sort = sorted(all_dates)
+        # reindex the data which causes NaNs everywhere in the regular index that don't
+        # exactly match the data, with the data in between the NaNs
+        pdf3 = pdf2.reindex(fill_sort)
+        # remove the NaN rows that are by themselves because there is data near enough
+        mask1 = ~pdf3['site_code'].notna() & ~pdf3['site_code'].shift().notna()
+        mask2 = pdf3['site_code'].notna()
+        pdf4 = pdf3[mask1 | mask2]
+        # Reindex to 0 ... N
+        pdf = pdf4.reset_index()
+    return pdf
 
 if __name__ == '__main__':
     app.run_server(debug=True)

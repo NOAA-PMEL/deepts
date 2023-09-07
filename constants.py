@@ -3,8 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 import numpy as np
 
-url1 = 'https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_microcat'
 data_table = 'deepts'
+location_table = 'deepts_locations'
 
 # Create a SQLAlchemy connection string from the environment variable `DATABASE_URL`
 # automatically created in your dash app when it is linked to a postgres container
@@ -20,3 +20,7 @@ connection_string = "postgresql+pg8000" + os.environ.get(
 # `poolclass=NullPool` prevents the Engine from using any connection more than once. You'll find more info here:
 # https://docs.sqlalchemy.org/en/14/core/pooling.html#using-connection-pools-with-multiprocessing-or-os-fork
 postgres_engine = create_engine(connection_string, poolclass=NullPool)
+
+d_format = "%Y-%m-%d"
+
+MOVE1_total = 13657673
