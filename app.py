@@ -345,6 +345,7 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     print(p_url)
     df = pd.read_csv(p_url, skiprows=[1])
     figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title)
+    figure.update_xaxes(title='Time')
     figure.update_yaxes(autorange='reversed')
 
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
@@ -357,7 +358,10 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
         pts = px.line(pdf, x='time', y=in_variable, hover_data=['depth', 'time', in_variable])
         pts.update_traces(connectgaps=False, line_color=cc.b_glasbey_bw_minc_20[idx], name=str(d), showlegend=True)
         ts.add_traces(list(pts.select_traces()))
-    ts.update_layout(showlegend=True)
+        ts.update_yaxes(title=in_variable)
+        ts.update_xaxes(title='Time')
+    ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by depth.'
+    ts.update_layout(showlegend=True, title=ts_title)
     return [figure, ts, list_group, False]
 
 
