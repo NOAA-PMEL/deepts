@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output, State, no_update, callback_context, exceptions
+from dash import Dash, dcc, html, Input, Output, State, no_update, callback_context, exceptions, CeleryManager, DiskcacheManager
 import dash_design_kit as ddk
 import plotly.express as px
 import plotly.graph_objects as go
@@ -13,13 +13,28 @@ import json
 from sdig.erddap.info import Info
 import colorcet as cc
 
+# For testing...
+# import diskcache
+# cache = diskcache.Cache("./cache")
+# background_callback_manager = DiskcacheManager(cache)
+
+# For production...
+# from celery import Celery
+
+celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
+background_callback_manager = CeleryManager(celery_app)
+
+line_rgb = 'rgba(.04,.04,.04,.2)'
+plot_bg = 'rgba(1.0, 1.0, 1.0 ,1.0)'
+
+
 app = app = Dash(__name__,
                 external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP])
 server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = .1
+version = .2
 
 with open("config/sites.json", "r+") as site_file:
     site_json = json.load(site_file)
@@ -142,7 +157,7 @@ app.layout = html.Div([
         ),
     ]),
     dbc.Row(children=[
-        dbc.Card(
+        dbc.Card(style={'bgcolor': '#FFFFFF'}, children=
             [
                 dbc.CardHeader('Timeseries Plot'),
                 dbc.CardBody(dcc.Loading(ddk.Graph(id='timeseries-graph')))
@@ -302,9 +317,10 @@ def update_location_map(kick, in_site_code):
         Input('variable', 'value'),
         Input('start-date', 'value'),
         Input('end-date', 'value')
-    ]
+    ],background=True, manager=background_callback_manager,
 )
 def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
+    print('changing site', in_site)
     if in_site is None:
         return no_update
     variables = site_json[in_site]['variables'].copy()
@@ -319,23 +335,47 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     list_group.children.append(link_group)
     meta_item = dbc.ListGroupItem(in_site + ': ', href=url, target='_blank')
     link_group.children.append(meta_item)
+
+    p_startdt = datetime.datetime.strptime(p_in_start_date, constants.d_format)
+    p_enddt = datetime.datetime.strptime(p_in_end_date, constants.d_format)
+    time_range = p_enddt - p_startdt
+    num_days = time_range.days
+    num_hours = num_days*24
     if in_variable is None or len(in_variable) == 0:
         return no_update
 
     if in_variable == 'PSAL':
         cs=px.colors.sequential.Viridis
     else:
-        cs=px.colors.sequential.Inferno            
+        cs=px.colors.sequential.Inferno    
     get_vars = ','.join(variables)
     time_con = '&time>='+p_in_start_date+'&time<='+p_in_end_date
-    depth_con = ''
-    if site_json[in_site]['minimum_depth'] != 'none':
-        depth_con = '&depth>=' + str(site_json[in_site]['minimum_depth'])
-    p_startdt = datetime.datetime.strptime(p_in_start_date, constants.d_format)
-    p_enddt = datetime.datetime.strptime(p_in_end_date, constants.d_format)
+    # Estimate the size and sample accordingly
     p_title = in_variable + ' at ' + in_site
+    ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by depth'
+    print(p_title, ts_title, 'done ')
+    if 'obs_per_hour' in site_json[in_site]:
+        num_obs = site_json[in_site]['obs_per_hour'] * num_hours
+        factor = num_obs/10_000
+        if factor > .16:
+            time_con = time_con + '&orderByClosest("depth,time/'+str(factor)+'hour")'
+        if factor < 1 and factor > .16:
+            p_title = p_title + ' (sampled every ' + str(int(factor*60)) + ' minutes)'
+            ts_title = ts_title + ' (sampled every ' + str(int(factor*60)) + ' minutes)'  
+        elif factor >= 1 and factor <= 24:
+            p_title = p_title + ' (sampled every ' + str(int(factor)) + ' hours)'
+            ts_title = ts_title + ' (sampled every ' + str(int(factor)) + ' hours)'
+        elif factor > 24:
+            p_title = p_title + ' (sampled every ' + str(int(factor/24)) + ' days)'
+            ts_title = ts_title + ' (sampled every ' + str(int(factor/24)) + ' days)'
+    # Use minimum depth if defined
+    depth_con = ''
+    if 'minimum_depth' in site_json[in_site]:
+        depth_con = '&depth>' + str(site_json[in_site]['minimum_depth'])
+    
     p_url = url
-    p_url = p_url + '.csv?' + get_vars + time_con 
+    print(p_url)
+    p_url = p_url + '.csv?' + get_vars + time_con + depth_con
     item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
     link_group.children.append(item)
     item = dbc.ListGroupItem('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
@@ -345,22 +385,96 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     print(p_url)
     df = pd.read_csv(p_url, skiprows=[1])
     figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title)
-    figure.update_xaxes(title='Time')
-    figure.update_yaxes(autorange='reversed')
-
+    figure.update_layout(font=dict(size=16), modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white')
+    figure.update_xaxes({
+        'title': 'Time',
+        'titlefont': {'size':16},
+        'ticklabelmode': 'period',
+        'showticklabels': True,
+        'gridcolor': line_rgb,
+        'zeroline': True,
+        'zerolinecolor': line_rgb,
+        'showline': True,
+        'linewidth': 1,
+        'linecolor': line_rgb,
+        'mirror': True,
+        'tickfont': {'size': 16},
+        'tickformatstops' : [
+            dict(dtickrange=[1000, 60000], value="%H:%M:%S\n%d%b%Y"),
+            dict(dtickrange=[60000, 3600000], value="%H:%M\n%d%b%Y"),
+            dict(dtickrange=[3600000, 86400000], value="%H:%M\n%d%b%Y"),
+            dict(dtickrange=[86400000, 604800000], value="%e\n%b %Y"),
+            dict(dtickrange=[604800000, "M1"], value="%b\n%Y"),
+            dict(dtickrange=["M1", "M12"], value="%b\n%Y"),
+            dict(dtickrange=["M12", None], value="%Y")
+        ]
+    })
+    figure.update_yaxes({
+        'autorange': 'reversed',
+        'title': in_variable,
+        'titlefont': {'size': 16},
+        'gridcolor': line_rgb,
+        'zeroline': True,
+        'zerolinecolor': line_rgb,
+        'showline': True,
+        'linewidth': 1,
+        'linecolor': line_rgb,
+        'mirror': True,
+        'tickfont': {'size': 14}
+    })
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
     ts = go.Figure()
     for idx, d in enumerate(df['depth'].unique()):
         pdf = df.loc[df['depth'] == d]
-        pdf = pdf.set_index('time')    
-        pdf = pdf.asfreq(freq='1H')
-        pdf = pdf.reset_index()
-        pts = px.line(pdf, x='time', y=in_variable, hover_data=['depth', 'time', in_variable])
-        pts.update_traces(connectgaps=False, line_color=cc.b_glasbey_bw_minc_20[idx], name=str(d), showlegend=True)
-        ts.add_traces(list(pts.select_traces()))
-        ts.update_yaxes(title=in_variable)
-        ts.update_xaxes(title='Time')
-    ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by depth.'
+        # This is a fudge until we get some better config and better ideas 
+        if in_site == 'KEO':
+            pdf = pdf.set_index('time')    
+            pdf = pdf.asfreq(freq='1H')
+            pdf = pdf.reset_index()
+        pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='x+y', showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
+        ts.add_traces(pts)
+    ts.update_layout(legend=dict(orientation="v", yanchor="top", y=.97, xanchor="right", x=1.08, bgcolor='white'), 
+                     plot_bgcolor=plot_bg, 
+                     font=dict(size=16),
+                     modebar=dict(orientation='h'),
+                     paper_bgcolor="white",
+                     )
+    ts.update_traces(connectgaps=False)
+    ts.update_xaxes({
+        'title': 'Time',
+        'titlefont': {'size':16},
+        'ticklabelmode': 'period',
+        'showticklabels': True,
+        'gridcolor': line_rgb,
+        'zeroline': True,
+        'zerolinecolor': line_rgb,
+        'showline': True,
+        'linewidth': 1,
+        'linecolor': line_rgb,
+        'mirror': True,
+        'tickfont': {'size': 16},
+        'tickformatstops' : [
+            dict(dtickrange=[1000, 60000], value="%H:%M:%S\n%d%b%Y"),
+            dict(dtickrange=[60000, 3600000], value="%H:%M\n%d%b%Y"),
+            dict(dtickrange=[3600000, 86400000], value="%H:%M\n%d%b%Y"),
+            dict(dtickrange=[86400000, 604800000], value="%e\n%b %Y"),
+            dict(dtickrange=[604800000, "M1"], value="%b\n%Y"),
+            dict(dtickrange=["M1", "M12"], value="%b\n%Y"),
+            dict(dtickrange=["M12", None], value="%Y")
+        ]
+    })
+    ts.update_yaxes({
+        'title': in_variable,
+        'titlefont': {'size': 16},
+        'gridcolor': line_rgb,
+        'zeroline': True,
+        'zerolinecolor': line_rgb,
+        'showline': True,
+        'linewidth': 1,
+        'linecolor': line_rgb,
+        'mirror': True,
+        'tickfont': {'size': 14}
+    })
     ts.update_layout(showlegend=True, title=ts_title)
     return [figure, ts, list_group, False]
 

@@ -4,13 +4,13 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_microcat",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_microcat.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
-            "minimum_depth": 2000.0
+            "minimum_depth": 2000,
+            "obs_per_hour": 17
         },
     "KEO":
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deep",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deep.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "DENS", "CNDC"],
-            "minimum_depth": "none"
+            "variables": ["PRES", "TEMP", "PSAL", "DENS", "CNDC"]
         }
 }
