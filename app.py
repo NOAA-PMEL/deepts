@@ -19,7 +19,7 @@ import colorcet as cc
 # background_callback_manager = DiskcacheManager(cache)
 
 # For production...
-# from celery import Celery
+from celery import Celery
 
 celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
 background_callback_manager = CeleryManager(celery_app)
