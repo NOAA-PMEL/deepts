@@ -12,4 +12,5 @@ colorcet
 diskcache
 psutil
 multiprocess
+importlib-metadata==4.13.0
 git+https://github.com/noaaroland/sdig.git

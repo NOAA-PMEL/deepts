@@ -12,29 +12,34 @@ import db
 import json
 from sdig.erddap.info import Info
 import colorcet as cc
-
-# For testing...
-# import diskcache
-# cache = diskcache.Cache("./cache")
-# background_callback_manager = DiskcacheManager(cache)
-
-# For production...
+import celery
 from celery import Celery
+import diskcache
 
-celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
-background_callback_manager = CeleryManager(celery_app)
+
+if os.environ.get("DASH_ENTERPRISE_ENV") == "WORKSPACE":
+    # For testing...
+    # import diskcache
+    cache = diskcache.Cache("./cache")
+    background_callback_manager = DiskcacheManager(cache)
+else:
+    # For production...
+    celery_app = Celery(__name__, broker=os.environ['REDIS_URL'], backend=os.environ['REDIS_URL'])
+    background_callback_manager = CeleryManager(celery_app)
 
 line_rgb = 'rgba(.04,.04,.04,.2)'
 plot_bg = 'rgba(1.0, 1.0, 1.0 ,1.0)'
 
 
-app = app = Dash(__name__,
+app = app = Dash(__name__, background_callback_manager=background_callback_manager, 
                 external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP])
 server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
 version = .2
+
+fmt = '%Y-%m-%d %H:%M'
 
 with open("config/sites.json", "r+") as site_file:
     site_json = json.load(site_file)
@@ -117,7 +122,7 @@ app.layout = html.Div([
                 ])  
             ]),
             dbc.Card(children=[
-                dbc.CardHeader(children=['Time range: (n.b. MOVE1 will only work with about 5 days of data right now.)']),
+                dbc.CardHeader(children=['Time range:']),
                 dbc.Row(children=[
                     dbc.Col(width=6, children=[
                         dbc.Card(children=[
@@ -293,7 +298,7 @@ def update_location_map(kick, in_site_code):
                 ]
             }
         ],
-        mapbox_zoom=2,
+        mapbox_zoom=1.1,
         mapbox_center={'lat': locations_df['latitude'].mean(), 'lon': locations_df['longitude'].mean()},
         margin={"r": 0, "t": 0, "l": 0, "b": 0},
         legend=dict(
@@ -384,7 +389,7 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     link_group.children.append(item)
     print(p_url)
     df = pd.read_csv(p_url, skiprows=[1])
-    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title)
+    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data={'time':':%Y-%m-%dT%H:%M:%S'})
     figure.update_layout(font=dict(size=16), modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white')
     figure.update_xaxes({
         'title': 'Time',
@@ -411,7 +416,7 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     })
     figure.update_yaxes({
         'autorange': 'reversed',
-        'title': in_variable,
+        'title': 'PRES (dbar)',
         'titlefont': {'size': 16},
         'gridcolor': line_rgb,
         'zeroline': True,
@@ -425,13 +430,15 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
     ts = go.Figure()
     for idx, d in enumerate(df['depth'].unique()):
-        pdf = df.loc[df['depth'] == d]
+        pdf = df.loc[df['depth'] == d].copy()
         # This is a fudge until we get some better config and better ideas 
         if in_site == 'KEO':
             pdf = pdf.set_index('time')    
             pdf = pdf.asfreq(freq='1H')
-            pdf = pdf.reset_index()
-        pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='x+y', showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
+            pdf = pdf.reset_index()   
+        pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
+        pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>at Depth: ' + str(d)
+        pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
         ts.add_traces(pts)
     ts.update_layout(legend=dict(orientation="v", yanchor="top", y=.97, xanchor="right", x=1.08, bgcolor='white'), 
                      plot_bgcolor=plot_bg, 
