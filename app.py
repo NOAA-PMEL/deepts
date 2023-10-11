@@ -71,6 +71,10 @@ app.layout = html.Div([
     html.Div(id='kick'),
     dcc.Store(id='initial-time-start'),  # time from initial load query string
     dcc.Store(id='initial-time-end'),  # time from initial load query string
+    dcc.Store(id='profile-plot-start-time'),
+    dcc.Store(id='profile-plot-end-time'),
+    dcc.Store(id='ts-plot-start-time'),
+    dcc.Store(id='ts-plot-end-time'),
     dcc.Store(id='site-code'),
     dbc.Navbar(
         dbc.Row(style={'width': '100%'}, align="center", children=[
@@ -156,7 +160,7 @@ app.layout = html.Div([
     dbc.Row(children=[
         dbc.Card(
             [
-                dbc.CardHeader('Profile Plot'),
+                dbc.CardHeader(['Profile Plot', dbc.Button('Resample', disabled=True, id='profile-resample', title='Set time range to match graph and resample.', style={'margin-left': '30px'})]),
                 dbc.CardBody(dcc.Loading(ddk.Graph(id='profile-graph')))
             ]
         ),
@@ -164,7 +168,7 @@ app.layout = html.Div([
     dbc.Row(children=[
         dbc.Card(style={'bgcolor': '#FFFFFF'}, children=
             [
-                dbc.CardHeader('Timeseries Plot'),
+                dbc.CardHeader(['Timeseries Plot', dbc.Button('Resample', disabled=True, id='ts-resample', title='Set time range to match graph and resample.', style={'margin-left': '30px'})]),
                 dbc.CardBody(dcc.Loading(ddk.Graph(id='timeseries-graph')))
             ]
         ),
@@ -219,6 +223,80 @@ def toggle_modal(n1, n2, is_open):
     if n1 or n2:
         return not is_open
     return is_open
+
+
+@app.callback(
+    Output('ts-plot-start-time', 'data'),
+    Output('ts-plot-end-time', 'data'),
+    Input('timeseries-graph', 'relayoutData')
+)
+def relayout_ts(layout_data):
+    print(layout_data)
+    if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
+        start = layout_data['xaxis.range[0]']
+        end = layout_data['xaxis.range[1]']
+    else:
+        return no_update
+    print('saving ', start, ' and ', end, ' in Stores')
+    return start, end
+
+
+@app.callback(
+    Output('profile-plot-start-time', 'data'),
+    Output('profile-plot-end-time', 'data'),
+    Input('profile-graph', 'relayoutData')
+)
+def relayout_ts(layout_data):
+    print(layout_data)
+    if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
+        start = layout_data['xaxis.range[0]']
+        end = layout_data['xaxis.range[1]']
+    else:
+        return no_update
+    print('saving ', start, ' and ', end, ' in Stores')
+    return start, end
+
+
+@app.callback(
+    Output('start-date', 'value', allow_duplicate=True),
+    Output('end-date', 'value', allow_duplicate=True),
+    Input('ts-resample', 'n_clicks'),
+    State('ts-plot-start-time', 'data'),
+    State('ts-plot-end-time', 'data'),
+    prevent_initial_call=True
+)
+def set_date_range_from_ts_plot(click, in_time_start, in_time_end):
+    print('ts resample button: ', in_time_start, ' and ', in_time_end)
+    if in_time_start is not None and in_time_end is not None:
+        dt_start = datetime.datetime.strptime(in_time_start, constants.layout_format)
+        dt_end = datetime.datetime.strptime(in_time_end, constants.layout_format)
+        out_start = dt_start.strftime(constants.d_format)
+        out_end = dt_end.strftime(constants.d_format)
+        print('return ', out_start, ' ', out_end)
+        return out_start, out_end  
+    else:
+        return no_update
+
+
+@app.callback(
+    Output('start-date', 'value', allow_duplicate=True),
+    Output('end-date', 'value', allow_duplicate=True),
+    Input('profile-resample', 'n_clicks'),
+    State('profile-plot-start-time', 'data'),
+    State('profile-plot-end-time', 'data'),
+    prevent_initial_call=True
+)
+def set_date_range_from_profile_plot(click, in_time_start, in_time_end):
+    print('resample button: ', in_time_start, ' and ', in_time_end)
+    if in_time_start is not None and in_time_end is not None:
+        dt_start = datetime.datetime.strptime(in_time_start, constants.layout_format)
+        dt_end = datetime.datetime.strptime(in_time_end, constants.layout_format)
+        out_start = dt_start.strftime(constants.d_format)
+        out_end = dt_end.strftime(constants.d_format)
+        print('return ', out_start, ' ', out_end)
+        return out_start, out_end  
+    else:
+        return no_update        
 
 
 @app.callback(
@@ -315,7 +393,9 @@ def update_location_map(kick, in_site_code):
         Output('profile-graph', 'figure'),
         Output('timeseries-graph', 'figure'),
         Output('download-body', 'children'),
-        Output('download-button', 'disabled')
+        Output('download-button', 'disabled'),
+        Output('profile-resample', 'disabled'),
+        Output('ts-resample', 'disabled')
     ],
     [
         Input('site-code', 'data'),
@@ -324,7 +404,7 @@ def update_location_map(kick, in_site_code):
         Input('end-date', 'value')
     ],background=True, manager=background_callback_manager,
 )
-def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
+def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
     print('changing site', in_site)
     if in_site is None:
         return no_update
@@ -363,10 +443,17 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
         num_obs = site_json[in_site]['obs_per_hour'] * num_hours
         factor = num_obs/10_000
         if factor > .16:
-            time_con = time_con + '&orderByClosest("depth,time/'+str(factor)+'hour")'
+            if factor < 1:
+                minutes = int(factor*60)
+                if minutes > 15:
+                    time_con = time_con + '&orderByClosest("depth,time/'+str(factor)+'hour")'
+            else:
+                time_con = time_con + '&orderByClosest("depth,time/'+str(factor)+'hour")'
         if factor < 1 and factor > .16:
-            p_title = p_title + ' (sampled every ' + str(int(factor*60)) + ' minutes)'
-            ts_title = ts_title + ' (sampled every ' + str(int(factor*60)) + ' minutes)'  
+            minutes = int(factor*60)
+            if minutes > 15:
+                p_title = p_title + ' (sampled every ' + str(int(factor*60)) + ' minutes)'
+                ts_title = ts_title + ' (sampled every ' + str(int(factor*60)) + ' minutes)'  
         elif factor >= 1 and factor <= 24:
             p_title = p_title + ' (sampled every ' + str(int(factor)) + ' hours)'
             ts_title = ts_title + ' (sampled every ' + str(int(factor)) + ' hours)'
@@ -380,6 +467,9 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
     
     p_url = url
     print(p_url)
+    disabled = True
+    if 'orderByClosest' in time_con:
+        disabled = False
     p_url = p_url + '.csv?' + get_vars + time_con + depth_con
     item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
     link_group.children.append(item)
@@ -483,7 +573,7 @@ def update_profile_plot(in_site, in_variable, p_in_start_date, p_in_end_date):
         'tickfont': {'size': 14}
     })
     ts.update_layout(showlegend=True, title=ts_title)
-    return [figure, ts, list_group, False]
+    return [figure, ts, list_group, False, disabled, disabled]
 
 
 @app.callback(
@@ -535,7 +625,7 @@ def set_date_range_from_slider(slide_values, in_start_date, in_end_date, initial
     start_output = in_start_date
     end_output = in_end_date
 
-    if trigger_id == 'start-date':
+    if trigger_id == 'start-date' or trigger_id == 'end-date':
         try:
             in_start_date_obj = datetime.datetime.strptime(in_start_date, constants.d_format)
         except:
@@ -554,7 +644,7 @@ def set_date_range_from_slider(slide_values, in_start_date, in_end_date, initial
             start_seconds = end_seconds
             in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
             start_output = in_start_date_obj.date().strftime(constants.d_format)
-    elif trigger_id == 'end-date':
+   
         try:
             in_end_date_obj = datetime.datetime.strptime(in_end_date, constants.d_format)
         except:

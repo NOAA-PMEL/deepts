@@ -23,4 +23,6 @@ postgres_engine = create_engine(connection_string, poolclass=NullPool)
 
 d_format = "%Y-%m-%d"
 
+layout_format = "%Y-%m-%d %H:%M:%S.%f"
+
 MOVE1_total = 13657673
