@@ -75,6 +75,7 @@ app.layout = html.Div([
     dcc.Store(id='profile-plot-end-time'),
     dcc.Store(id='ts-plot-start-time'),
     dcc.Store(id='ts-plot-end-time'),
+    dcc.Store(id='is-subsampled'),
     dcc.Store(id='site-code'),
     dbc.Navbar(
         dbc.Row(style={'width': '100%'}, align="center", children=[
@@ -228,33 +229,47 @@ def toggle_modal(n1, n2, is_open):
 @app.callback(
     Output('ts-plot-start-time', 'data'),
     Output('ts-plot-end-time', 'data'),
-    Input('timeseries-graph', 'relayoutData')
+    Output('profile-resample', 'disabled', allow_duplicate=True),
+    Output('ts-resample', 'disabled', allow_duplicate=True),
+    Input('timeseries-graph', 'relayoutData'),
+    State('is-subsampled', 'data'),
+    prevent_initial_call=True
 )
-def relayout_ts(layout_data):
-    print(layout_data)
+def relayout_ts(layout_data, in_is_subsampled):
+    # Plot is not subsampled to turn off resample now
+    if in_is_subsampled is not None and in_is_subsampled == 'no':
+        return '', '', True, True
+    disabled = True
     if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
         start = layout_data['xaxis.range[0]']
         end = layout_data['xaxis.range[1]']
+        disabled = False
     else:
-        return no_update
-    print('saving ', start, ' and ', end, ' in Stores')
-    return start, end
+        return '', '', disabled, disabled
+    return start, end, disabled, disabled
 
 
 @app.callback(
     Output('profile-plot-start-time', 'data'),
     Output('profile-plot-end-time', 'data'),
-    Input('profile-graph', 'relayoutData')
+    Output('profile-resample', 'disabled', allow_duplicate=True),
+    Output('ts-resample', 'disabled', allow_duplicate=True),
+    Input('profile-graph', 'relayoutData'),
+    State('is-subsampled', 'data'),
+    prevent_initial_call=True
 )
-def relayout_ts(layout_data):
-    print(layout_data)
+def relayout_ts(layout_data, in_is_subsampled):
+    # Plot is not subsampled to turn off resample now
+    if in_is_subsampled is not None and in_is_subsampled == 'no':
+        return '', '', True, True
+    disabled = True
     if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
         start = layout_data['xaxis.range[0]']
         end = layout_data['xaxis.range[1]']
+        disabled = False
     else:
-        return no_update
-    print('saving ', start, ' and ', end, ' in Stores')
-    return start, end
+        return '', '', disabled, disabled
+    return start, end, disabled, disabled
 
 
 @app.callback(
@@ -266,13 +281,11 @@ def relayout_ts(layout_data):
     prevent_initial_call=True
 )
 def set_date_range_from_ts_plot(click, in_time_start, in_time_end):
-    print('ts resample button: ', in_time_start, ' and ', in_time_end)
     if in_time_start is not None and in_time_end is not None:
         dt_start = datetime.datetime.strptime(in_time_start, constants.layout_format)
         dt_end = datetime.datetime.strptime(in_time_end, constants.layout_format)
         out_start = dt_start.strftime(constants.d_format)
         out_end = dt_end.strftime(constants.d_format)
-        print('return ', out_start, ' ', out_end)
         return out_start, out_end  
     else:
         return no_update
@@ -287,13 +300,11 @@ def set_date_range_from_ts_plot(click, in_time_start, in_time_end):
     prevent_initial_call=True
 )
 def set_date_range_from_profile_plot(click, in_time_start, in_time_end):
-    print('resample button: ', in_time_start, ' and ', in_time_end)
     if in_time_start is not None and in_time_end is not None:
         dt_start = datetime.datetime.strptime(in_time_start, constants.layout_format)
         dt_end = datetime.datetime.strptime(in_time_end, constants.layout_format)
         out_start = dt_start.strftime(constants.d_format)
         out_end = dt_end.strftime(constants.d_format)
-        print('return ', out_start, ' ', out_end)
         return out_start, out_end  
     else:
         return no_update        
@@ -395,17 +406,18 @@ def update_location_map(kick, in_site_code):
         Output('download-body', 'children'),
         Output('download-button', 'disabled'),
         Output('profile-resample', 'disabled'),
-        Output('ts-resample', 'disabled')
+        Output('ts-resample', 'disabled'),
+        Output('is-subsampled', 'data')
     ],
     [
         Input('site-code', 'data'),
         Input('variable', 'value'),
         Input('start-date', 'value'),
         Input('end-date', 'value')
-    ],background=True, manager=background_callback_manager,
+    ],background=True, manager=background_callback_manager, prevent_initial_call=True
 )
 def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
-    print('changing site', in_site)
+    is_subsampled = 'no'
     if in_site is None:
         return no_update
     variables = site_json[in_site]['variables'].copy()
@@ -438,7 +450,6 @@ def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
     # Estimate the size and sample accordingly
     p_title = in_variable + ' at ' + in_site
     ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by depth'
-    print(p_title, ts_title, 'done ')
     if 'obs_per_hour' in site_json[in_site]:
         num_obs = site_json[in_site]['obs_per_hour'] * num_hours
         factor = num_obs/10_000
@@ -466,10 +477,6 @@ def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
         depth_con = '&depth>' + str(site_json[in_site]['minimum_depth'])
     
     p_url = url
-    print(p_url)
-    disabled = True
-    if 'orderByClosest' in time_con:
-        disabled = False
     p_url = p_url + '.csv?' + get_vars + time_con + depth_con
     item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
     link_group.children.append(item)
@@ -477,7 +484,8 @@ def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
     link_group.children.append(item)
     item = dbc.ListGroupItem('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
     link_group.children.append(item)
-    print(p_url)
+    if 'orderByClosest' in p_url:
+        is_subsampled = 'yes'
     df = pd.read_csv(p_url, skiprows=[1])
     figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data={'time':':%Y-%m-%dT%H:%M:%S'})
     figure.update_layout(font=dict(size=16), modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white')
@@ -573,7 +581,9 @@ def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
         'tickfont': {'size': 14}
     })
     ts.update_layout(showlegend=True, title=ts_title)
-    return [figure, ts, list_group, False, disabled, disabled]
+    print('Plots from: ' + p_url)
+    #                               download enabled, but resample disabled until you zoom the plot, is_subsampled='yes' required for it to turn on later
+    return [figure, ts, list_group, False, True, True, is_subsampled]
 
 
 @app.callback(
