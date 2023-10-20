@@ -529,12 +529,7 @@ def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
     df = Info.plug_gaps(df, 'time', 'depth', ['latitude', 'longitude', 'site_code', 'depth'], 1.25)
     ts = go.Figure()
     for idx, d in enumerate(df['depth'].unique()):
-        pdf = df.loc[df['depth'] == d].copy()
-        # This is a fudge until we get some better config and better ideas 
-        if in_site == 'KEO':
-            pdf = pdf.set_index('time')    
-            pdf = pdf.asfreq(freq='1H')
-            pdf = pdf.reset_index()   
+        pdf = df.loc[df['depth'] == d].copy()  
         pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
         pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>at Depth: ' + str(d)
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
