@@ -526,6 +526,7 @@ def update_plots(in_site, in_variable, p_in_start_date, p_in_end_date):
         'tickfont': {'size': 14}
     })
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
+    df = Info.plug_gaps(df, 'time', 'depth', ['latitude', 'longitude', 'site_code', 'depth'], 1.25)
     ts = go.Figure()
     for idx, d in enumerate(df['depth'].unique()):
         pdf = df.loc[df['depth'] == d].copy()
@@ -686,30 +687,6 @@ def set_date_range_from_slider(slide_values, in_start_date, in_end_date, initial
             end_output
             ]
 
-
-def make_gaps(pdf, fre):
-    if pdf.shape[0] > 3:
-        # This magic inserts missing values between rows that are more than two deltas apart.
-        # Make time the index to the data
-        pdf2 = pdf.set_index('time')
-        pdf2 = pdf2[~pdf2.index.duplicated()]
-        # make a index at the expected delta
-        fill_dates = pd.date_range(pdf['time'].iloc[0], pdf['time'].iloc[-1], freq=fre)
-        # sprinkle the actual values out along the new time axis, by combining the regular
-        # intervals index and the data index
-        all_dates = fill_dates.append(pdf2.index)
-        all_dates = all_dates[~all_dates.duplicated()]
-        fill_sort = sorted(all_dates)
-        # reindex the data which causes NaNs everywhere in the regular index that don't
-        # exactly match the data, with the data in between the NaNs
-        pdf3 = pdf2.reindex(fill_sort)
-        # remove the NaN rows that are by themselves because there is data near enough
-        mask1 = ~pdf3['site_code'].notna() & ~pdf3['site_code'].shift().notna()
-        mask2 = pdf3['site_code'].notna()
-        pdf4 = pdf3[mask1 | mask2]
-        # Reindex to 0 ... N
-        pdf = pdf4.reset_index()
-    return pdf
 
 if __name__ == '__main__':
     app.run_server(debug=True)
