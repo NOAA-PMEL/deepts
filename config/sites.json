@@ -1,16 +1,42 @@
 {
     "MOVE1":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_microcat",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_microcat.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
+            "minimum_depth": 2000,
+            "obs_per_hour": 17
+        },
+    "MOVE2":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
+            "minimum_depth": 2000,
+            "obs_per_hour": 17
+        },
+    "MOVE3":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17
         },
     "KEO":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deep",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deep.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["PRES", "TEMP", "PSAL", "DENS", "CNDC"]
-        }
+        },
+    "EC1":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["PRES", "TEMP", "PSAL", "DOX2"],
+            "minimum_depth": 2000,
+            "obs_per_hour": 4,
+            "start_date": "2017-05-18",
+            "start_date_seconds": 1495065600  
+        }       
 }
