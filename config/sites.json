@@ -38,5 +38,12 @@
             "obs_per_hour": 4,
             "start_date": "2017-05-18",
             "start_date_seconds": 1495065600  
-        }       
+        },
+    "NTAS": 
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "obs_per_hour": 24
+        }
 }

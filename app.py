@@ -411,8 +411,7 @@ def update_location_map(kick, in_site_code):
         Input('site-code', 'data'),
         Input('variable', 'value'),
         Input('date-range', 'value'),
-    ], prevent_initial_call=True
-    # background=True, manager=background_callback_manager, prevent_initial_call=True
+    ], background=True, manager=background_callback_manager, prevent_initial_call=True
 )
 def update_plots(in_site, in_variable, p_in_dates,):
     print('plots == ' + str((in_site, in_variable, p_in_dates)))
