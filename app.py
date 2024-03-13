@@ -42,6 +42,7 @@ ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 version = .2
 
 fmt = '%Y-%m-%d %H:%M'
+fmtz = '%Y-%m-%d %H:%M:%sZ'
 
 with open("config/sites.json", "r+") as site_file:
     site_json = json.load(site_file)
@@ -116,11 +117,6 @@ app.layout = html.Div([
                             [
                                 dbc.ModalHeader(dbc.ModalTitle("Download Data")),
                                 dbc.ModalBody(id='download-body'),
-                                dbc.ModalFooter(
-                                    dbc.Button(
-                                        "Close", id="close-download", className="ms-auto", n_clicks=0
-                                    )
-                                ),
                             ],
                             id="download-dialog",
                             is_open=False,
@@ -211,11 +207,11 @@ app.layout = html.Div([
 
 @app.callback(
     Output("download-dialog", "is_open"),
-    [Input("download-button", "n_clicks"), Input("close-download", "n_clicks")],
+    [Input("download-button", "n_clicks")],
     [State("download-dialog", "is_open")],
 )
-def toggle_modal(n1, n2, is_open):
-    if n1 or n2:
+def toggle_modal(n1, is_open):
+    if n1:
         return not is_open
     return is_open
 
@@ -223,7 +219,6 @@ def toggle_modal(n1, n2, is_open):
 @app.callback(
     Output('ts-plot-start-time', 'data'),
     Output('ts-plot-end-time', 'data'),
-    Output('profile-resample', 'disabled', allow_duplicate=True),
     Output('ts-resample', 'disabled', allow_duplicate=True),
     Input('timeseries-graph', 'relayoutData'),
     State('is-subsampled', 'data'),
@@ -232,22 +227,21 @@ def toggle_modal(n1, n2, is_open):
 def relayout_ts(layout_data, in_is_subsampled):
     # Plot is not subsampled to turn off resample now
     if in_is_subsampled is not None and in_is_subsampled == 'no':
-        return '', '', True, True
+        return '', '', True
     disabled = True
     if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
         start = layout_data['xaxis.range[0]']
         end = layout_data['xaxis.range[1]']
         disabled = False
     else:
-        return '', '', disabled, disabled
-    return start, end, disabled, disabled
+        return '', '', disabled
+    return start, end, disabled
 
 
 @app.callback(
     Output('profile-plot-start-time', 'data'),
     Output('profile-plot-end-time', 'data'),
     Output('profile-resample', 'disabled', allow_duplicate=True),
-    Output('ts-resample', 'disabled', allow_duplicate=True),
     Input('profile-graph', 'relayoutData'),
     State('is-subsampled', 'data'),
     prevent_initial_call=True
@@ -255,15 +249,15 @@ def relayout_ts(layout_data, in_is_subsampled):
 def relayout_ts(layout_data, in_is_subsampled):
     # Plot is not subsampled to turn off resample now
     if in_is_subsampled is not None and in_is_subsampled == 'no':
-        return '', '', True, True
+        return '', '', True
     disabled = True
     if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
         start = layout_data['xaxis.range[0]']
         end = layout_data['xaxis.range[1]']
         disabled = False
     else:
-        return '', '', disabled, disabled
-    return start, end, disabled, disabled
+        return '', '', disabled
+    return start, end, disabled
 
 
 @app.callback(
@@ -422,6 +416,11 @@ def update_plots(in_site, in_variable, p_in_dates,):
     variables.append('time')
     variables.append('depth')
     variables.append('site_code')
+    variables.append('latitude')
+    variables.append('longitude')
+    variables.append('id')
+
+
     url = site_json[in_site]['url']
     list_group = html.Div()
     list_group.children = []
@@ -448,7 +447,7 @@ def update_plots(in_site, in_variable, p_in_dates,):
     time_con = '&time>='+p_in_dates[0]+'&time<='+p_in_dates[1]
     # Estimate the size and sample accordingly
     p_title = in_variable + ' at ' + in_site
-    ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by depth'
+    ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by ID'
     if 'obs_per_hour' in site_json[in_site]:
         num_obs = site_json[in_site]['obs_per_hour'] * num_hours
         factor = num_obs/10_000
@@ -456,9 +455,9 @@ def update_plots(in_site, in_variable, p_in_dates,):
             if factor < 1:
                 minutes = int(factor*60)
                 if minutes > 15:
-                    time_con = time_con + '&orderByClosest("depth,time/'+str(factor)+'hour")'
+                    time_con = time_con + '&orderByClosest("id,time/'+str(factor)+'hour")'
             else:
-                time_con = time_con + '&orderByClosest("depth,time/'+str(factor)+'hour")'
+                time_con = time_con + '&orderByClosest("id,time/'+str(factor)+'hour")'
         if factor < 1 and factor > .16:
             minutes = int(factor*60)
             if minutes > 15:
@@ -486,7 +485,7 @@ def update_plots(in_site, in_variable, p_in_dates,):
     if 'orderByClosest' in p_url:
         is_subsampled = 'yes'
     df = pd.read_csv(p_url, skiprows=[1])
-    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data={'time':':%Y-%m-%dT%H:%M:%S'})
+    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id'])
     figure.update_layout(font=dict(size=16), modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white')
     figure.update_xaxes({
         'title': 'Time',
@@ -525,12 +524,12 @@ def update_plots(in_site, in_variable, p_in_dates,):
         'tickfont': {'size': 14}
     })
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
-    df = Info.plug_gaps(df, 'time', 'depth', ['latitude', 'longitude', 'site_code', 'depth'], 1.25)
+    df = Info.plug_gaps(df, 'time', 'id', ['latitude', 'longitude', 'site_code', 'id'], 1.25)
     ts = go.Figure()
-    for idx, d in enumerate(df['depth'].unique()):
-        pdf = df.loc[df['depth'] == d].copy()  
+    for idx, d in enumerate(df['id'].unique()):
+        pdf = df.loc[df['id'] == d].copy()  
         pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
-        pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>at Depth: ' + str(d)
+        pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
         ts.add_traces(pts)
     ts.update_layout(legend=dict(orientation="v", yanchor="top", y=.97, xanchor="right", x=1.08, bgcolor='white'), 
