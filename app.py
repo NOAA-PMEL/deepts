@@ -448,6 +448,7 @@ def update_plots(in_site, in_variable, p_in_dates,):
     # Estimate the size and sample accordingly
     p_title = in_variable + ' at ' + in_site
     ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by ID'
+    order_by = ''
     if 'obs_per_hour' in site_json[in_site]:
         num_obs = site_json[in_site]['obs_per_hour'] * num_hours
         factor = num_obs/10_000
@@ -455,9 +456,9 @@ def update_plots(in_site, in_variable, p_in_dates,):
             if factor < 1:
                 minutes = int(factor*60)
                 if minutes > 15:
-                    time_con = time_con + '&orderByClosest("id,time/'+str(factor)+'hour")'
+                    order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
             else:
-                time_con = time_con + '&orderByClosest("id,time/'+str(factor)+'hour")'
+                order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
         if factor < 1 and factor > .16:
             minutes = int(factor*60)
             if minutes > 15:
@@ -475,15 +476,16 @@ def update_plots(in_site, in_variable, p_in_dates,):
         depth_con = '&depth>' + str(site_json[in_site]['minimum_depth'])
     
     p_url = url
-    p_url = p_url + '.csv?' + get_vars + time_con + depth_con
+    p_url = p_url + '.csv?' + get_vars + depth_con + time_con
     item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
     link_group.children.append(item)
     item = dbc.ListGroupItem('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
     link_group.children.append(item)
     item = dbc.ListGroupItem('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
     link_group.children.append(item)
-    if 'orderByClosest' in p_url:
+    if 'orderByClosest' in order_by:
         is_subsampled = 'yes'
+    p_url = p_url + order_by
     df = pd.read_csv(p_url, skiprows=[1])
     figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id'])
     figure.update_layout(font=dict(size=16), modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white')
