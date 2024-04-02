@@ -488,7 +488,8 @@ def update_plots(in_site, in_variable, p_in_dates,):
     p_url = p_url + order_by
     df = pd.read_csv(p_url, skiprows=[1])
     figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id'])
-    figure.update_layout(font=dict(size=16), modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white')
+    figure.update_layout(font=dict(size=16), title_x=.065, title_y=.89, modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white', 
+                         margin=dict(l=80, r=80, b=80, t=80, ))
     figure.update_xaxes({
         'title': 'Time',
         'titlefont': {'size':16},
@@ -531,15 +532,14 @@ def update_plots(in_site, in_variable, p_in_dates,):
     for idx, d in enumerate(df['id'].unique()):
         pdf = df.loc[df['id'] == d].copy()  
         pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
-        pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)
+        pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,'depth'].astype(str)
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
         ts.add_traces(pts)
     ts.update_layout(legend=dict(orientation="v", yanchor="top", y=.97, xanchor="right", x=1.08, bgcolor='white'), 
                      plot_bgcolor=plot_bg, 
-                     font=dict(size=16),
                      modebar=dict(orientation='h'),
                      paper_bgcolor="white",
-                     )
+                     font=dict(size=16), title=ts_title, title_x=.065, title_y=.93, showlegend=True,)
     ts.update_traces(connectgaps=False)
     ts.update_xaxes({
         'title': 'Time',
@@ -576,7 +576,7 @@ def update_plots(in_site, in_variable, p_in_dates,):
         'mirror': True,
         'tickfont': {'size': 14}
     })
-    ts.update_layout(showlegend=True, title=ts_title)
+    
     print('Plots from: ' + p_url)
     #                               download enabled, but resample disabled until you zoom the plot, is_subsampled='yes' required for it to turn on later
     return [figure, ts, list_group, False, True, True, is_subsampled]
