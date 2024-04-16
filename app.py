@@ -116,7 +116,9 @@ app.layout = html.Div([
                         dbc.Modal(children=
                             [
                                 dbc.ModalHeader(dbc.ModalTitle("Download Data")),
-                                dbc.ModalBody(id='download-body'),
+                                dbc.ModalBody(id='download-body', children=[                            
+                                ]
+                                ),
                             ],
                             id="download-dialog",
                             is_open=False,
@@ -135,14 +137,19 @@ app.layout = html.Div([
                 ])  
             ]),
             dbc.Card(children=[
-                dbc.CardHeader(children=['Time range:']),
-                dmc.DateRangePicker(
-                    id="date-range",
-                    description="N.B. Click below, then click the month then year at the top of the dialog to easily set long ranges.",
-                    ml=25,
-                    style={"width": 330},
-                    clearable=False
-                ),
+                dbc.CardHeader(children=['Date range:']),
+                dbc.Row([
+                    dbc.Col([dcc.Input(id='start-date-picker', type="date", style={'width': '150px', 'margin-left': '20px'})]),
+                    dbc.Col([html.Div()]), 
+                    dbc.Col([dcc.Input(id='end-date-picker', type='date', style={'width': '150px'} )])
+                ])
+                # dmc.DateRangePicker(
+                #     id="date-range",
+                #     description="N.B. Click below, then click the month then year at the top of the dialog to easily set long ranges.",
+                #     ml=25,
+                #     style={"width": 330},
+                #     clearable=False
+                # ),
             ]),
         ]),
         dbc.Col(width=8, children=[ddk.Graph(id='location-graph')]),
@@ -261,7 +268,8 @@ def relayout_ts(layout_data, in_is_subsampled):
 
 
 @app.callback(
-    Output('date-range', 'value', allow_duplicate=True),
+    Output('start-date-picker', 'value', allow_duplicate=True),
+    Output('end-date-picker', 'value', allow_duplicate=True),
     Input('ts-resample', 'n_clicks'),
     State('ts-plot-start-time', 'data'),
     State('ts-plot-end-time', 'data'),
@@ -279,10 +287,17 @@ def set_date_range_from_ts_plot(click, in_time_start, in_time_end):
 
 
 @app.callback(
-    Output('date-range', 'value', allow_duplicate=True),
-    Input('profile-resample', 'n_clicks'),
-    State('profile-plot-start-time', 'data'),
-    State('profile-plot-end-time', 'data'),
+    [
+        Output('start-date-picker', 'value', allow_duplicate=True),
+        Output('end-date-picker', 'value', allow_duplicate=True),
+    ],
+    [
+        Input('profile-resample', 'n_clicks'),
+    ],
+    [
+        State('profile-plot-start-time', 'data'),
+        State('profile-plot-end-time', 'data'),
+    ],
     prevent_initial_call=True
 )
 def set_date_range_from_profile_plot(click, in_time_start, in_time_end):
@@ -301,9 +316,12 @@ def set_date_range_from_profile_plot(click, in_time_start, in_time_end):
 @app.callback(
     [
         Output('site-code', 'data'),
-        Output('date-range', 'value', allow_duplicate=True),
-        Output('date-range', 'minDate'),
-        Output('date-range', 'maxDate'),
+        Output('start-date-picker', 'value', allow_duplicate=True),
+        Output('end-date-picker', 'value', allow_duplicate=True),
+        Output('start-date-picker', 'min'),
+        Output('start-date-picker', 'max'),
+        Output('end-date-picker', 'min'),
+        Output('end-date-picker', 'max'),
         Output('variable','options'),
         Output('variable', 'value'),
         Output('initial-time-start', 'data'),
@@ -323,8 +341,10 @@ def set_selected_site(in_click):
             if var != 'PRES':
                 vops.append({'label': site_json[site]['long_names'][var], 'value': var})
         return [site, 
-                [site_json[site]['start_date'], 
-                site_json[site]['end_date']],
+                site_json[site]['start_date'], 
+                site_json[site]['end_date'],
+                site_json[site]['start_date'], 
+                site_json[site]['end_date'],
                 site_json[site]['start_date'], 
                 site_json[site]['end_date'],
                 vops,
@@ -404,13 +424,13 @@ def update_location_map(kick, in_site_code):
     [
         Input('site-code', 'data'),
         Input('variable', 'value'),
-        Input('date-range', 'value'),
+        Input('start-date-picker', 'value'),
+        Input('end-date-picker', 'value')
     ], background=True, manager=background_callback_manager, prevent_initial_call=True
 )
-def update_plots(in_site, in_variable, p_in_dates,):
-    print('plots == ' + str((in_site, in_variable, p_in_dates)))
+def update_plots(in_site, in_variable, p_start_date, p_end_date):
     is_subsampled = 'no'
-    if in_site is None or p_in_dates is None:
+    if in_site is None or p_start_date is None or p_end_date is None:
         return [get_blank('Select a site on the map, a variable, and a date range.'), get_blank('Select a site on the map, a variable, and a date range.'), list_group, False, True, True, is_subsampled]
     variables = site_json[in_site]['variables'].copy()
     variables.append('time')
@@ -427,11 +447,13 @@ def update_plots(in_site, in_variable, p_in_dates,):
     link_group = dbc.ListGroup(horizontal=True)
     link_group.children = []
     list_group.children.append(link_group)
-    meta_item = dbc.ListGroupItem(in_site + ': ', href=url, target='_blank')
+    meta_item = dbc.ListGroupItem('ERDDAP data page for '+ in_site, href=url, target='_blank')
     link_group.children.append(meta_item)
+    list_group.children.append(html.P(children=["Click a format button below to download the full resolution of the data for the selected date range."],
+                                      style={'margin-top': '30px'}))
 
-    p_startdt = datetime.datetime.strptime(p_in_dates[0], constants.d_format)
-    p_enddt = datetime.datetime.strptime(p_in_dates[1], constants.d_format)
+    p_startdt = datetime.datetime.strptime(p_start_date, constants.d_format)
+    p_enddt = datetime.datetime.strptime(p_end_date, constants.d_format)
     time_range = p_enddt - p_startdt
     num_days = time_range.days
     num_hours = num_days*24
@@ -444,7 +466,7 @@ def update_plots(in_site, in_variable, p_in_dates,):
     else:
         cs=px.colors.sequential.Inferno    
     get_vars = ','.join(variables)
-    time_con = '&time>='+p_in_dates[0]+'&time<='+p_in_dates[1]
+    time_con = '&time>='+p_start_date+'&time<='+p_end_date
     # Estimate the size and sample accordingly
     p_title = in_variable + ' at ' + in_site
     ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by ID'
@@ -475,14 +497,17 @@ def update_plots(in_site, in_variable, p_in_dates,):
     if 'minimum_depth' in site_json[in_site]:
         depth_con = '&depth>' + str(site_json[in_site]['minimum_depth'])
     
+    link_group2 = dbc.ListGroup(horizontal=True)
+    link_group2.children = []
     p_url = url
     p_url = p_url + '.csv?' + get_vars + depth_con + time_con
     item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
-    link_group.children.append(item)
+    link_group2.children.append(item)
     item = dbc.ListGroupItem('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
-    link_group.children.append(item)
+    link_group2.children.append(item)
     item = dbc.ListGroupItem('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
-    link_group.children.append(item)
+    link_group2.children.append(item)
+    list_group.children.append(link_group2)
     if 'orderByClosest' in order_by:
         is_subsampled = 'yes'
     p_url = p_url + order_by
@@ -583,4 +608,4 @@ def update_plots(in_site, in_variable, p_in_dates,):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, dev_tools_props_check=False)
