@@ -468,8 +468,23 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     get_vars = ','.join(variables)
     time_con = '&time>='+p_start_date+'&time<='+p_end_date
     # Estimate the size and sample accordingly
-    p_title = in_variable + ' at ' + in_site
-    ts_title = 'Timeseries of ' + in_variable + ' at ' + in_site + ' colored by ID'
+    
+    if in_variable in long_names:
+        var_units = long_names[in_variable]
+    else:
+        var_units = in_variable
+
+    if in_variable in units:
+        var_units = var_units + ' (' + units[in_variable] + ')'
+    
+    p_title = var_units + ' at ' + in_site
+    ts_title = var_units + ' at ' + in_site + ' colored by ID'
+
+    if in_variable in units:
+        short_label = in_variable + ' (' + units[in_variable] + ')'
+    else:
+        short_label = in_variable
+            
     order_by = ''
     if 'obs_per_hour' in site_json[in_site]:
         num_obs = site_json[in_site]['obs_per_hour'] * num_hours
@@ -513,11 +528,18 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     p_url = p_url + order_by
     df = pd.read_csv(p_url, skiprows=[1])
     figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id'])
-    figure.update_layout(font=dict(size=16), title_x=.065, title_y=.89, modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white', 
+    figure.update_layout(font=dict(size=18), title_x=.065, title_y=.89, modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white', 
                          margin=dict(l=80, r=80, b=80, t=80, ))
+    figure.update_coloraxes({
+        'cmin':df[in_variable].min(),
+        'cmax':df[in_variable].max(),
+        'colorbar_title_side': 'right',
+        'colorbar_title_font_size': 16,
+        'colorbar_title_text': short_label
+    })
     figure.update_xaxes({
-        'title': 'Time',
-        'titlefont': {'size':16},
+        'title': None,
+        'titlefont': {'size':18},
         'ticklabelmode': 'period',
         'showticklabels': True,
         'gridcolor': line_rgb,
@@ -549,7 +571,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         'linewidth': 1,
         'linecolor': line_rgb,
         'mirror': True,
-        'tickfont': {'size': 14}
+        'tickfont': {'size': 16}
     })
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
     df = Info.plug_gaps(df, 'time', 'id', ['latitude', 'longitude', 'site_code', 'id'], 1.25)
@@ -560,15 +582,13 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,'depth'].astype(str)
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
         ts.add_traces(pts)
-    ts.update_layout(legend=dict(orientation="v", yanchor="top", y=.97, xanchor="right", x=1.08, bgcolor='white'), 
+    ts.update_layout(legend=dict(orientation="v", yanchor="top", y=1.01, xanchor="right", x=1.08, bgcolor='white', font_size=14), 
                      plot_bgcolor=plot_bg, 
                      modebar=dict(orientation='h'),
                      paper_bgcolor="white",
-                     font=dict(size=16), title=ts_title, title_x=.065, title_y=.93, showlegend=True,)
+                     font=dict(size=18), title=ts_title, title_x=.065, title_y=.93, showlegend=True,)
     ts.update_traces(connectgaps=False)
     ts.update_xaxes({
-        'title': 'Time',
-        'titlefont': {'size':16},
         'ticklabelmode': 'period',
         'showticklabels': True,
         'gridcolor': line_rgb,
@@ -589,8 +609,9 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
             dict(dtickrange=["M12", None], value="%Y")
         ]
     })
+
     ts.update_yaxes({
-        'title': in_variable,
+        'title': short_label,
         'titlefont': {'size': 16},
         'gridcolor': line_rgb,
         'zeroline': True,
@@ -599,7 +620,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         'linewidth': 1,
         'linecolor': line_rgb,
         'mirror': True,
-        'tickfont': {'size': 14}
+        'tickfont': {'size': 16}
     })
     
     print('Plots from: ' + p_url)
