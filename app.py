@@ -535,6 +535,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         'cmax':df[in_variable].max(),
         'colorbar_title_side': 'right',
         'colorbar_title_font_size': 16,
+        'colorbar_tickfont_size': 16,
         'colorbar_title_text': short_label
     })
     figure.update_xaxes({
