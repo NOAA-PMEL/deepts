@@ -39,7 +39,7 @@ server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = .2
+version = v0.0.3
 
 fmt = '%Y-%m-%d %H:%M'
 fmtz = '%Y-%m-%d %H:%M:%sZ'
@@ -527,7 +527,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         is_subsampled = 'yes'
     p_url = p_url + order_by
     df = pd.read_csv(p_url, skiprows=[1])
-    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id'])
+    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id', 'depth'])
     figure.update_layout(font=dict(size=18), title_x=.065, title_y=.89, modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white', 
                          margin=dict(l=80, r=80, b=80, t=80, ))
     figure.update_coloraxes({
