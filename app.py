@@ -39,7 +39,7 @@ server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = v0.0.3
+version = 'v0.0.3'
 
 fmt = '%Y-%m-%d %H:%M'
 fmtz = '%Y-%m-%d %H:%M:%sZ'
@@ -564,7 +564,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     figure.update_yaxes({
         'autorange': 'reversed',
         'title': 'PRES (dbar)',
-        'titlefont': {'size': 16},
+        'titlefont': {'size': 18},
         'gridcolor': line_rgb,
         'zeroline': True,
         'zerolinecolor': line_rgb,
@@ -583,7 +583,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,'depth'].astype(str)
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
         ts.add_traces(pts)
-    ts.update_layout(legend=dict(orientation="v", yanchor="top", y=1.01, xanchor="right", x=1.08, bgcolor='white', font_size=14), 
+    ts.update_layout(legend=dict(orientation="v", yanchor="top", y=1.01, xanchor="right", x=1.08, bgcolor='white', font_size=16), 
                      plot_bgcolor=plot_bg, 
                      modebar=dict(orientation='h'),
                      paper_bgcolor="white",
