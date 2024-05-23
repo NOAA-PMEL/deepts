@@ -39,7 +39,7 @@ server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = 'v0.0.3'
+version = 'v0.0.4'
 
 fmt = '%Y-%m-%d %H:%M'
 fmtz = '%Y-%m-%d %H:%M:%sZ'
@@ -372,7 +372,7 @@ def update_location_map(kick, in_site_code):
                                 hovertext=locations_df['site_code'],
                                 hoverinfo='lat+lon+text',
                                 customdata=locations_df['site_code'],
-                                marker={'color': 'black', 'size': 15},
+                                marker={'color': 'black', 'size': 10},
                                 mode='markers')
     figure.add_trace(black_trace)
     if in_site_code is not None:
@@ -382,7 +382,7 @@ def update_location_map(kick, in_site_code):
                             hovertext=[in_site_code],
                             hoverinfo='lat+lon+text',
                             customdata=[in_site_code],
-                            marker={'color': 'yellow', 'size': 15},
+                            marker={'color': 'yellow', 'size': 10},
                             mode='markers')
         figure.add_trace(yellow_trace)
     figure.update_layout(
