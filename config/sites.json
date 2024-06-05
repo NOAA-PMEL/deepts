@@ -5,7 +5,8 @@
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
-            "obs_per_hour": 17
+            "obs_per_hour": 17,
+            "depth_name": "depth"
         },
     "MOVE2":
         {
@@ -13,7 +14,8 @@
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
-            "obs_per_hour": 17
+            "obs_per_hour": 17,
+            "depth_name": "depth"
         },
     "MOVE3":
         {
@@ -21,13 +23,15 @@
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
-            "obs_per_hour": 17
+            "obs_per_hour": 17,
+            "depth_name": "depth"
         },
     "KEO":
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "DENS", "CNDC"]
+            "variables": ["PRES", "TEMP", "PSAL", "DENS", "CNDC"],
+            "depth_name": "depth"
         },
     "EC1":
         {
@@ -37,13 +41,55 @@
             "minimum_depth": 2000,
             "obs_per_hour": 4,
             "start_date": "2017-05-18",
-            "start_date_seconds": 1495065600  
+            "start_date_seconds": 1495065600,
+            "depth_name": "depth" 
         },
     "NTAS": 
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
-            "obs_per_hour": 24
+            "obs_per_hour": 1,
+            "depth_name": "depth"
+        },
+    "NOG":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NOG_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NOG_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "obs_per_hour": 1,
+            "depth_name": "depth"
+        },
+    "PAP":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "obs_per_hour": 2,
+            "depth_name": "depth"
+        },
+    "WHOTS":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/WHOTS_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/WHOTS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "obs_per_hour": 72,
+            "depth_name": "None"
+        },
+    "IRMINGSEA1":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA1_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL", "CNDC"],
+            "obs_per_hour": 12,
+            "depth_name": "depth_min"
+        },
+    "IRMINGSEA2":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA2_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL", "CNDC"],
+            "obs_per_hour": 12,
+            "depth_name": "depth_min"
         }
 }

@@ -253,7 +253,7 @@ def relayout_ts(layout_data, in_is_subsampled):
     State('is-subsampled', 'data'),
     prevent_initial_call=True
 )
-def relayout_ts(layout_data, in_is_subsampled):
+def relayout_profile(layout_data, in_is_subsampled):
     # Plot is not subsampled to turn off resample now
     if in_is_subsampled is not None and in_is_subsampled == 'no':
         return '', '', True
@@ -434,7 +434,8 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         return [get_blank('Select a site on the map, a variable, and a date range.'), get_blank('Select a site on the map, a variable, and a date range.'), list_group, False, True, True, is_subsampled]
     variables = site_json[in_site]['variables'].copy()
     variables.append('time')
-    variables.append('depth')
+    if site_json[in_site]['depth_name'] != 'None':
+        variables.append(site_json[in_site]['depth_name'])
     variables.append('site_code')
     variables.append('latitude')
     variables.append('longitude')
@@ -527,7 +528,15 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         is_subsampled = 'yes'
     p_url = p_url + order_by
     df = pd.read_csv(p_url, skiprows=[1])
-    figure = px.scatter(df, x='time', y='PRES', color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=['time', 'PRES', in_variable, 'id', 'depth'])
+    hover_vars = ["time", in_variable, "id"]
+    if 'PRES' in site_json[in_site]['variables']:
+        hover_vars.append("PRES")
+    if site_json[in_site]['depth_name'] != 'None':
+        hover_vars.append(site_json[in_site]['depth_name'])
+    y_var = 'PRES'
+    if 'PRES' not in site_json[in_site]['variables']:
+        y_var = site_json[in_site]['depth_name']
+    figure = px.scatter(df, x='time', y=y_var, color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=hover_vars)
     figure.update_layout(font=dict(size=18), title_x=.065, title_y=.89, modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white', 
                          margin=dict(l=80, r=80, b=80, t=80, ))
     figure.update_coloraxes({
@@ -580,7 +589,10 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     for idx, d in enumerate(df['id'].unique()):
         pdf = df.loc[df['id'] == d].copy()  
         pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
-        pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,'depth'].astype(str)
+        if site_json[in_site]['depth_name'] != 'None':
+            pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,site_json[in_site]['depth_name']].astype(str)
+        else:
+            pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)   
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
         ts.add_traces(pts)
     ts.update_layout(legend=dict(orientation="v", yanchor="top", y=1.01, xanchor="right", x=1.08, bgcolor='white', font_size=16), 
