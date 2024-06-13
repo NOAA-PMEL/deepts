@@ -11,6 +11,9 @@ import datetime
 import logging
 from sdig.erddap.info import Info
 
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -21,7 +24,7 @@ def load_locations():
     for site in site_json:
         site_df = pd.read_csv(site_json[site]['locations'], skiprows=[1])
         if site_df.shape[1] > 1:
-            site_df = site_df.mean().round(2)
+            site_df = site_df.mean(numeric_only=True).round(2)
             site_df = site_df.reset_index().pivot_table(columns='index')
             site_df['site_code'] = site
         if locations_df is None:
