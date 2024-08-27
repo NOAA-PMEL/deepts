@@ -1,9 +1,9 @@
-from dash import Dash, dcc, html, Input, Output, State, no_update, callback_context, exceptions, CeleryManager, DiskcacheManager
+from dash_enterprise_libraries import EnterpriseDash
+from dash import dcc, get_asset_url, html, Input, Output, State, no_update, callback_context, exceptions, CeleryManager, DiskcacheManager
 import dash_design_kit as ddk
 import plotly.express as px
 import plotly.graph_objects as go
-import dash_bootstrap_components as dbc
-import dash_mantine_components as dmc
+from plotly.subplots import make_subplots
 import pandas as pd
 import redis
 import os
@@ -14,12 +14,13 @@ import db
 import json
 from sdig.erddap.info import Info
 import colorcet as cc
-import celery
 from celery import Celery
 import diskcache
 import ssl
+import theme
 ssl._create_default_https_context = ssl._create_unverified_context
 
+d_format = "%Y-%m-%d"
 
 if os.environ.get("DASH_ENTERPRISE_ENV") == "WORKSPACE":
     # For testing...
@@ -35,34 +36,41 @@ line_rgb = 'rgba(.04,.04,.04,.2)'
 plot_bg = 'rgba(1.0, 1.0, 1.0 ,1.0)'
 
 
-app = app = Dash(__name__, background_callback_manager=background_callback_manager, 
-                external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP])
+app = app = EnterpriseDash(__name__, background_callback_manager=background_callback_manager)
+
+app.setup_shortcuts(
+    logo=get_asset_url('logo.gif'),
+    title="OceanSITES Deep Timeseries", # Default: app.title
+    size="normal" # Can also be "slim"
+)
 server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = 'v0.0.4'
+version = ' Version v2.0'
 
 fmt = '%Y-%m-%d %H:%M'
 fmtz = '%Y-%m-%d %H:%M:%sZ'
 
 with open("config/sites.json", "r+") as site_file:
-    site_json = json.load(site_file)
+    config = json.load(site_file)
 
-for site in site_json:
-    url = site_json[site]['url']
-    info = Info(url)
-    start_date, end_date, start_date_seconds, end_date_seconds = info.get_times()
-    variables, long_names, units, stardard_names, var_types = info.get_variables()
+site_json = config['sites']
 
-    time_marks = Info.get_time_marks(start_date_seconds, end_date_seconds)
-    if 'start_date' not in site_json[site]:
-        site_json[site]['start_date'] = start_date
-        site_json[site]['start_date_seconds'] = start_date_seconds
-    site_json[site]['end_date'] = end_date
-    site_json[site]['end_date_seconds'] = end_date_seconds
-    site_json[site]['long_names'] = long_names
-    site_json[site]['time_marks'] = time_marks
+site_options = []
+
+for site in config['sites']:
+    site_options.append({'label': site, 'value': site})
+
+all_start_seconds = config['all_start_seconds']
+all_end_seconds = config['all_end_seconds']
+
+all_starto = datetime.datetime.fromtimestamp(all_start_seconds)
+all_start = datetime.datetime.strftime(all_starto, d_format)
+all_endo = datetime.datetime.fromtimestamp(all_end_seconds)
+all_end = datetime.datetime.strftime(all_endo, d_format)
+
+time_marks = Info.get_time_marks(all_start_seconds, all_end_seconds)
 
 month_step = 60*60*24*30.25
 obs_day = 12*21
@@ -91,149 +99,98 @@ def get_blank(message):
     return blank_graph
 
 
-app.layout = html.Div([
+app.layout = ddk.App(theme=theme.theme, children=[
     html.Div(id='kick'),
-    dcc.Store(id='initial-time-start'),  # time from initial load query string
-    dcc.Store(id='initial-time-end'),  # time from initial load query string
-    dcc.Store(id='profile-plot-start-time'),
-    dcc.Store(id='profile-plot-end-time'),
-    dcc.Store(id='ts-plot-start-time'),
-    dcc.Store(id='ts-plot-end-time'),
+    dcc.Store(id='plot-end-time'),
     dcc.Store(id='is-subsampled'),
-    dcc.Store(id='site-code'),
-    dbc.Navbar(
-        dbc.Row(style={'width': '100%'}, align="center", children=[
-            dbc.Col(width=2, children=[
-                html.Img(src=app.get_asset_url('logo.gif'), style={'height': '97px', 'width': '150px', 'padding-left': '20px'}),
-            ]),
-            dbc.Col(width=3, style={'display': 'flex', 'align-items': 'left'}, children=[
-                dbc.NavbarBrand('Deep Timeseries', className="ml-2", style={'font-size': '2.5em', 'font-weight': 'bold'})
-            ]),
-            dbc.Col(width=4),
-            dbc.Col(width=3, children=[
-                dcc.Loading(id='nav-loader', children=[
-                    html.Div(id='loading-div'),
-                    html.Div(children=[
-                        dcc.Loading(dbc.Button("Download Data", id='download-button', className="me-1", disabled=True)),
-                        dbc.Modal(children=
-                            [
-                                dbc.ModalHeader(dbc.ModalTitle("Download Data")),
-                                dbc.ModalBody(id='download-body', children=[                            
-                                ]
-                                ),
-                            ],
-                            id="download-dialog",
-                            is_open=False,
-                        )
-                    ]),
-                ])
+    ddk.Card(width=.3, children=[
+        ddk.Modal(target_id='data-download', hide_target=True, children=[
+            dcc.Loading(html.Button("Download Data", id='download-button', disabled=True))
+        ]),
+        ddk.Card(children=[
+            dcc.RadioItems(id='variable', options = [
+                {'label': 'Conductivity', 'value': 'CNDC'},
+                {'label': 'Disolved Oxygen', 'value': 'DOX2'},
+                {'label': 'Salinity', 'value': 'PSAL'},
+                {'label': 'Temperature', 'value': 'TEMP'}
             ])
-        ])
-    ),
-    dbc.Row(children=[
-        dbc.Col(width=4, children=[
-            dbc.Card(children=[
-                dbc.CardHeader(children=["Select a Variable:"]),
-                dbc.CardBody([
-                    dbc.RadioItems(id='variable',)
-                ])  
+        ]),
+        ddk.Card(children=[
+            ddk.Block(width=.5, children=[
+                dcc.Input(id='start-date', debounce=True, value=all_start),
             ]),
-            dbc.Card(children=[
-                dbc.CardHeader(children=['Date range:']),
-                dbc.Row([
-                    dbc.Col([dcc.Input(id='start-date-picker', type="date", style={'width': '150px', 'margin-left': '20px'})]),
-                    dbc.Col([html.Div()]), 
-                    dbc.Col([dcc.Input(id='end-date-picker', type='date', style={'width': '150px'} )])
+            ddk.Block(width=.5, children=[
+                dcc.Input(id='end-date', debounce=True, value=all_end),
+            ]),
+            html.Div(style={'padding-right': '40px', 'padding-left': '40px', 'padding-top': '20px', 'padding-bottom': '45px'}, children=[
+                    dcc.RangeSlider(id='time-range-slider',
+                                    value=[all_start_seconds, all_end_seconds],
+                                    min=all_start_seconds,
+                                    max=all_end_seconds,
+                                    step=month_step,
+                                    marks=time_marks,
+                                    updatemode='mouseup',
+                                    allowCross=False)
+            ])
+        ]),
+        ddk.Card(children=[
+            dcc.Dropdown(id='site', options=site_options)
+        ]),
+    ]),
+    ddk.Card(width=.7, children=[ddk.Graph(id='location-graph')]),
+    ddk.Card(width=1, children=
+        [
+            ddk.CardHeader([html.Button('Resample', disabled=True, id='resample', title='Set time range to match graph and resample.', style={'margin-left': '30px'})]),
+            dcc.Loading(ddk.Graph(id='graph', figure=get_blank('Select a site on the map, a variable, and a date range.')))
+        ]
+    ),
+    ddk.Card(style={'margin-bottom': '10px'}, children=[
+        ddk.Block(children=[
+            ddk.Block(width=.08, children=[
+                html.Img(src='https://www.pmel.noaa.gov/sites/default/files/PMEL-meatball-logo-sm.png',
+                            height=100,
+                            width=100),
+            ]),
+            ddk.Block(width=.83, children=[
+                html.Div(children=[
+                    dcc.Link('National Oceanic and Atmospheric Administration',
+                                href='https://www.noaa.gov/'),
+                ]),
+                html.Div(children=[
+                    dcc.Link('Pacific Marine Environmental Laboratory', href='https://www.pmel.noaa.gov/'),
+                ]),
+                html.Div(children=[
+                    dcc.Link('oar.pmel.webmaster@noaa.gov', href='mailto:oar.pmel.webmaster@noaa.gov')
+                ]),
+                html.Div(children=[
+                    dcc.Link('DOC |', href='https://www.commerce.gov/'),
+                    dcc.Link(' NOAA |', href='https://www.noaa.gov/'),
+                    dcc.Link(' OAR |', href='https://www.research.noaa.gov/'),
+                    dcc.Link(' PMEL |', href='https://www.pmel.noaa.gov/'),
+                    dcc.Link(' Privacy Policy |', href='https://www.noaa.gov/disclaimer'),
+                    dcc.Link(' Disclaimer |', href='https://www.noaa.gov/disclaimer'),
+                    dcc.Link(' Accessibility |', href='https://www.pmel.noaa.gov/accessibility'),
+                    dcc.Link( version, href='https://github.com/NOAA-PMEL/de_osmc')
                 ])
-                # dmc.DateRangePicker(
-                #     id="date-range",
-                #     description="N.B. Click below, then click the month then year at the top of the dialog to easily set long ranges.",
-                #     ml=25,
-                #     style={"width": 330},
-                #     clearable=False
-                # ),
             ]),
         ]),
-        dbc.Col(width=8, children=[ddk.Graph(id='location-graph')]),
     ]),
-
-    dbc.Row(children=[
-        dbc.Card(
-            [
-                dbc.CardHeader(['Profile Plot', dbc.Button('Resample', disabled=True, id='profile-resample', title='Set time range to match graph and resample.', style={'margin-left': '30px'})]),
-                dbc.CardBody(dcc.Loading(ddk.Graph(id='profile-graph', figure=get_blank('Select a site on the map, a variable, and a date range.'))))
-            ]
-        ),
-    ]),
-    dbc.Row(children=[
-        dbc.Card(style={'bgcolor': '#FFFFFF'}, children=
-            [
-                dbc.CardHeader(['Timeseries Plot', dbc.Button('Resample', disabled=True, id='ts-resample', title='Set time range to match graph and resample.', style={'margin-left': '30px'})]),
-                dbc.CardBody(dcc.Loading(ddk.Graph(id='timeseries-graph', figure=get_blank('Select a site on the map, a variable, and a date range.'))))
-            ]
-        ),
-    ]),
-    dbc.Row(style={'margin-bottom': '10px'}, children=[
-        dbc.Col(width=12, children=[
-            dbc.Card(children=[
-                dbc.Row(children=[
-                    dbc.Col(width=1, children=[
-                        html.Img(src='https://www.pmel.noaa.gov/sites/default/files/PMEL-meatball-logo-sm.png',
-                                    height=100,
-                                    width=100),
-                    ]),
-                    dbc.Col(width=10, children=[
-                        html.Div(children=[
-                            dcc.Link('National Oceanic and Atmospheric Administration',
-                                        href='https://www.noaa.gov/'),
-                        ]),
-                        html.Div(children=[
-                            dcc.Link('Pacific Marine Environmental Laboratory', href='https://www.pmel.noaa.gov/'),
-                        ]),
-                        html.Div(children=[
-                            dcc.Link('oar.pmel.webmaster@noaa.gov', href='mailto:oar.pmel.webmaster@noaa.gov')
-                        ]),
-                        html.Div(children=[
-                            dcc.Link('DOC |', href='https://www.commerce.gov/'),
-                            dcc.Link(' NOAA |', href='https://www.noaa.gov/'),
-                            dcc.Link(' OAR |', href='https://www.research.noaa.gov/'),
-                            dcc.Link(' PMEL |', href='https://www.pmel.noaa.gov/'),
-                            dcc.Link(' Privacy Policy |', href='https://www.noaa.gov/disclaimer'),
-                            dcc.Link(' Disclaimer |', href='https://www.noaa.gov/disclaimer'),
-                            dcc.Link(' Accessibility', href='https://www.pmel.noaa.gov/accessibility')
-                        ])
-                    ]),
-                    dbc.Col(width=1, children=[
-                        html.Div(style={'font-size': '1.0em', 'position': 'absolute', 'bottom': '0'},
-                                    children=[version])
-                    ])
-                ])
-            ])
-        ])
+    ddk.Card(id='data-download', children=[
+        ddk.CardHeader('Download Data'),
+        html.Div(id='download-body')
     ])
 ])
 
 
 @app.callback(
-    Output("download-dialog", "is_open"),
-    [Input("download-button", "n_clicks")],
-    [State("download-dialog", "is_open")],
-)
-def toggle_modal(n1, is_open):
-    if n1:
-        return not is_open
-    return is_open
-
-
-@app.callback(
-    Output('ts-plot-start-time', 'data'),
-    Output('ts-plot-end-time', 'data'),
-    Output('ts-resample', 'disabled', allow_duplicate=True),
-    Input('timeseries-graph', 'relayoutData'),
+    Output('start-date', 'value', allow_duplicate=True),
+    Output('end-date', 'value', allow_duplicate=True),
+    Output('resample', 'disabled', allow_duplicate=True),
+    Input('graph', 'relayoutData'),
     State('is-subsampled', 'data'),
     prevent_initial_call=True
 )
-def relayout_ts(layout_data, in_is_subsampled):
+def relayout(layout_data, in_is_subsampled):
     # Plot is not subsampled to turn off resample now
     if in_is_subsampled is not None and in_is_subsampled == 'no':
         return '', '', True
@@ -243,41 +200,17 @@ def relayout_ts(layout_data, in_is_subsampled):
         end = layout_data['xaxis.range[1]']
         disabled = False
     else:
-        return '', '', disabled
+        return no_update, no_update, no_update
     return start, end, disabled
 
 
 @app.callback(
-    Output('profile-plot-start-time', 'data'),
-    Output('profile-plot-end-time', 'data'),
-    Output('profile-resample', 'disabled', allow_duplicate=True),
-    Input('profile-graph', 'relayoutData'),
-    State('is-subsampled', 'data'),
+    Output('start-date', 'value', allow_duplicate=True),
+    Output('end-date', 'value', allow_duplicate=True),
+    Input('resample', 'n_clicks'),
     prevent_initial_call=True
 )
-def relayout_profile(layout_data, in_is_subsampled):
-    # Plot is not subsampled to turn off resample now
-    if in_is_subsampled is not None and in_is_subsampled == 'no':
-        return '', '', True
-    disabled = True
-    if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
-        start = layout_data['xaxis.range[0]']
-        end = layout_data['xaxis.range[1]']
-        disabled = False
-    else:
-        return '', '', disabled
-    return start, end, disabled
-
-
-@app.callback(
-    Output('start-date-picker', 'value', allow_duplicate=True),
-    Output('end-date-picker', 'value', allow_duplicate=True),
-    Input('ts-resample', 'n_clicks'),
-    State('ts-plot-start-time', 'data'),
-    State('ts-plot-end-time', 'data'),
-    prevent_initial_call=True
-)
-def set_date_range_from_ts_plot(click, in_time_start, in_time_end):
+def set_date_range_from_plot(click, in_time_start, in_time_end):
     if in_time_start is not None and in_time_end is not None:
         dt_start = parser.parse(in_time_start)
         dt_end =parser.parse(in_time_end)
@@ -290,69 +223,48 @@ def set_date_range_from_ts_plot(click, in_time_start, in_time_end):
 
 @app.callback(
     [
-        Output('start-date-picker', 'value', allow_duplicate=True),
-        Output('end-date-picker', 'value', allow_duplicate=True),
-    ],
-    [
-        Input('profile-resample', 'n_clicks'),
-    ],
-    [
-        State('profile-plot-start-time', 'data'),
-        State('profile-plot-end-time', 'data'),
-    ],
-    prevent_initial_call=True
-)
-def set_date_range_from_profile_plot(click, in_time_start, in_time_end):
-    if in_time_start is not None and in_time_end is not None:
-        print(in_time_start)
-        print(in_time_end)
-        dt_start = parser.parse(in_time_start)
-        dt_end = parser.parse(in_time_end)
-        out_start = dt_start.strftime(constants.d_format)
-        out_end = dt_end.strftime(constants.d_format)
-        return [out_start, out_end] 
-    else:
-        return no_update        
-
-
-@app.callback(
-    [
-        Output('site-code', 'data'),
-        Output('start-date-picker', 'value', allow_duplicate=True),
-        Output('end-date-picker', 'value', allow_duplicate=True),
-        Output('start-date-picker', 'min'),
-        Output('start-date-picker', 'max'),
-        Output('end-date-picker', 'min'),
-        Output('end-date-picker', 'max'),
-        Output('variable','options'),
+        Output('site', 'value'),
+        Output('start-date', 'value', allow_duplicate=True),
+        Output('end-date', 'value', allow_duplicate=True),
+        Output('variable', 'options'),
         Output('variable', 'value'),
-        Output('initial-time-start', 'data'),
-        Output('initial-time-end', 'data')
+        Output('time-range-slider', 'value'),
     ],
     [
-        Input('location-graph', 'clickData')
+        Input('location-graph', 'clickData'),
+        Input('site', 'value')
     ], prevent_initial_call=True
 )
-def set_selected_site(in_click):
-    if in_click is not None:
-        vops = []
+def set_selected_site(in_click, in_site):
+    site = None
+    trigger_id = callback_context.triggered_id
+    if in_click is not None and trigger_id =='location-graph':
         point = in_click['points'][0]
         site = point['customdata']
+    elif in_site is not None and trigger_id == 'site':
+        site = in_site
+    vops = [
+        {'label': 'Conductivity', 'value': 'CNDC', 'disabled': True},
+        {'label': 'Disolved Oxygen', 'value': 'DOX2', 'disabled': True},
+        {'label': 'Salinity', 'value': 'PSAL', 'disabled': True},
+        {'label': 'Temperature', 'value': 'TEMP', 'disabled': True}
+    ]
+    var_value = None
+    if site is not None:
         short_names = site_json[site]['variables']
         for var in short_names:
-            if var != 'PRES':
-                vops.append({'label': site_json[site]['long_names'][var], 'value': var})
+            for op in vops:
+                if var == op['value']:
+                    if var_value is None:
+                        var_value = var
+                    op['disabled'] = False
         return [site, 
                 site_json[site]['start_date'], 
                 site_json[site]['end_date'],
-                site_json[site]['start_date'], 
-                site_json[site]['end_date'],
-                site_json[site]['start_date'], 
-                site_json[site]['end_date'],
                 vops,
-                short_names[-1],
-                site_json[site]['start_date_seconds'], 
-                site_json[site]['end_date_seconds'], 
+                var_value,
+                [site_json[site]['start_date_seconds'], 
+                site_json[site]['end_date_seconds'],]
                 ]
     return no_update
 
@@ -363,7 +275,7 @@ def set_selected_site(in_click):
     ],
     [
         Input('kick', 'n_clicks'),
-        Input('site-code', 'data')
+        Input('site', 'value')
     ]
 )
 def update_location_map(kick, in_site_code):
@@ -396,9 +308,9 @@ def update_location_map(kick, in_site_code):
                 "sourcetype": "raster",
                 "sourceattribution": "Powered by Esri",
                 "source": [
-                    "https://ibasemaps-api.arcgis.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}?token=" + ESRI_API_KEY
+                    'https://ibasemaps-api.arcgis.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}?token=' + ESRI_API_KEY
                 ]
-            }
+            },
         ],
         mapbox_zoom=1.1,
         mapbox_center={'lat': locations_df['latitude'].mean(), 'lon': locations_df['longitude'].mean()},
@@ -415,43 +327,40 @@ def update_location_map(kick, in_site_code):
 
 @app.callback(
     [
-        Output('profile-graph', 'figure'),
-        Output('timeseries-graph', 'figure'),
+        Output('graph', 'figure'),
         Output('download-body', 'children'),
         Output('download-button', 'disabled'),
-        Output('profile-resample', 'disabled'),
-        Output('ts-resample', 'disabled'),
+        Output('resample', 'disabled'),
         Output('is-subsampled', 'data')
     ],
     [
-        Input('site-code', 'data'),
+        Input('site', 'value'),
         Input('variable', 'value'),
-        Input('start-date-picker', 'value'),
-        Input('end-date-picker', 'value')
+        Input('start-date', 'value'),
+        Input('end-date', 'value')
     ], background=True, manager=background_callback_manager, prevent_initial_call=True
 )
 def update_plots(in_site, in_variable, p_start_date, p_end_date):
     is_subsampled = 'no'
     if in_site is None or p_start_date is None or p_end_date is None:
-        return [get_blank('Select a site on the map, a variable, and a date range.'), get_blank('Select a site on the map, a variable, and a date range.'), list_group, False, True, True, is_subsampled]
+        return [get_blank('A NONE Select a site on the map, a variable, and a date range.'), '', True, True, is_subsampled]
     variables = site_json[in_site]['variables'].copy()
     variables.append('time')
+    bottom_title = site_json[in_site]['title']
     if site_json[in_site]['depth_name'] != 'None':
         variables.append(site_json[in_site]['depth_name'])
     variables.append('site_code')
     variables.append('latitude')
     variables.append('longitude')
     variables.append('id')
-
+    long_names = site_json[in_site]['long_names']
+    units = site_json[in_site]['units']
 
     url = site_json[in_site]['url']
     list_group = html.Div()
     list_group.children = []
-    link_group = dbc.ListGroup(horizontal=True)
-    link_group.children = []
-    list_group.children.append(link_group)
-    meta_item = dbc.ListGroupItem('ERDDAP data page for '+ in_site, href=url, target='_blank')
-    link_group.children.append(meta_item)
+    meta_item = dcc.Link('ERDDAP data page for '+ in_site, href=url, target='_blank')
+    list_group.children.append(meta_item)
     list_group.children.append(html.P(children=["Click a format button below to download the full resolution of the data for the selected date range."],
                                       style={'margin-top': '30px'}))
 
@@ -461,9 +370,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     num_days = time_range.days
     num_hours = num_days*24
     if in_variable is None or len(in_variable) == 0:
-        return [get_blank('Select a site on the map, a variable, and a date range.'), get_blank('Select a site on the map, a variable, and a date range.'), list_group, False, True, True, is_subsampled]
-
-
+        return [get_blank('NO VARIABLE Select a site on the map, a variable, and a date range.'), get_blank('Select a site on the map, a variable, and a date range.'), list_group, False, True, True, is_subsampled]
     if in_variable == 'PSAL':
         cs=px.colors.sequential.Viridis
     else:
@@ -514,18 +421,14 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     depth_con = ''
     if 'minimum_depth' in site_json[in_site]:
         depth_con = '&depth>' + str(site_json[in_site]['minimum_depth'])
-    
-    link_group2 = dbc.ListGroup(horizontal=True)
-    link_group2.children = []
     p_url = url
     p_url = p_url + '.csv?' + get_vars + depth_con + time_con
-    item = dbc.ListGroupItem('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
-    link_group2.children.append(item)
-    item = dbc.ListGroupItem('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
-    link_group2.children.append(item)
-    item = dbc.ListGroupItem('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
-    link_group2.children.append(item)
-    list_group.children.append(link_group2)
+    item = dcc.Link('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
+    list_group.children.append(item)
+    item = dcc.Link('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
+    list_group.children.append(item)
+    item = dcc.Link('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
+    list_group.children.append(item)
     if 'orderByClosest' in order_by:
         is_subsampled = 'yes'
     p_url = p_url + order_by
@@ -538,18 +441,104 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     y_var = 'PRES'
     if 'PRES' not in site_json[in_site]['variables']:
         y_var = site_json[in_site]['depth_name']
-    figure = px.scatter(df, x='time', y=y_var, color=in_variable, color_continuous_scale=cs, title=p_title, hover_data=hover_vars)
-    figure.update_layout(font=dict(size=18), title_x=.065, title_y=.89, modebar=dict(orientation='h'), paper_bgcolor="white", plot_bgcolor='white', 
-                         margin=dict(l=80, r=80, b=80, t=80, ))
-    figure.update_coloraxes({
-        'cmin':df[in_variable].min(),
-        'cmax':df[in_variable].max(),
-        'colorbar_title_side': 'right',
-        'colorbar_title_font_size': 16,
-        'colorbar_tickfont_size': 16,
-        'colorbar_title_text': short_label
-    })
-    figure.update_xaxes({
+    df['text_time'] = df['time'].astype(str)
+    df['text'] = in_variable + '<br>' + df['text_time'] + '<br>' + \
+                    y_var + '=' + df[y_var].astype(str) + '<br>' + \
+                    in_variable + '=' + df[in_variable].apply(lambda x: '{0:.2f}'.format(x))
+    trace = go.Scattergl(x=df['time'], y=df[y_var],
+                        connectgaps=False,
+                        name=in_variable,
+                        mode='markers',
+                        # hovertext=read_data['text'],
+                        marker=dict(
+                            cmin=df[in_variable].min(),
+                            cmax=df[in_variable].max(),
+                            color=df[in_variable],
+                            colorscale=cs,
+                            colorbar=dict(
+                                title_side='right',
+                                title_font_size=16,
+                                tickfont_size=16,
+                                title_text=short_label,
+                                y=.2,
+                                len=.48
+                            )
+                        ),
+                        hoverinfo="text",
+                        hoverlabel=dict(namelength=-1),
+                        showlegend=False,
+                        )
+
+    df.loc[:, 'time'] = pd.to_datetime(df['time'])
+    df = Info.plug_gaps(df, 'time', 'id', ['latitude', 'longitude', 'site_code', 'id'], 1.25)
+    ts = go.Figure()
+    for idx, d in enumerate(df['id'].unique()):
+        pdf = df.loc[df['id'] == d].copy()  
+        pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
+        if site_json[in_site]['depth_name'] != 'None':
+            pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,site_json[in_site]['depth_name']].astype(str)
+        else:
+            pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)   
+        pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
+        ts.add_traces(pts)
+
+    ts.update_traces(connectgaps=False)
+    
+    print('Making plots from: ' + p_url)
+    sub_plots = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[450, 450])
+    for ts_trace in list(ts.select_traces()):
+        sub_plots.add_trace(ts_trace, row=1, col=1)
+    sub_plots.add_trace(trace, row=2, col=1)
+    sub_plots.update_layout(legend=dict(title='ID', orientation="v", yanchor="top", y=1.1, xanchor="right", x=1.08, bgcolor='white', font_size=16), plot_bgcolor=plot_bg, 
+                            modebar=dict(orientation='h'), paper_bgcolor="white", margin=dict(l=80, r=80, b=120, t=80),
+                            font=dict(size=18), title=ts_title, title_x=.05, title_y=.97, showlegend=True, height=950,
+                            )
+    sub_plots.update_xaxes({
+        'ticklabelmode': 'period',
+        'showticklabels': True,
+        'gridcolor': line_rgb,
+        'zeroline': True,
+        'zerolinecolor': line_rgb,
+        'showline': True,
+        'linewidth': 1,
+        'linecolor': line_rgb,
+        'mirror': True,
+        'tickfont': {'size': 16},
+        'tickformatstops' : [
+            dict(dtickrange=[1000, 60000], value="%H:%M:%S\n%d%b%Y"),
+            dict(dtickrange=[60000, 3600000], value="%H:%M\n%d%b%Y"),
+            dict(dtickrange=[3600000, 86400000], value="%H:%M\n%d%b%Y"),
+            dict(dtickrange=[86400000, 604800000], value="%e\n%b %Y"),
+            dict(dtickrange=[604800000, "M1"], value="%b\n%Y"),
+            dict(dtickrange=["M1", "M12"], value="%b\n%Y"),
+            dict(dtickrange=["M12", None], value="%Y")
+        ]
+    }, row=1, col=1)
+    sub_plots.update_yaxes({
+        'title': short_label,
+        'titlefont': {'size': 16},
+        'gridcolor': line_rgb,
+        'zeroline': True,
+        'zerolinecolor': line_rgb,
+        'showline': True,
+        'linewidth': 1,
+        'linecolor': line_rgb,
+        'mirror': True,
+        'tickfont': {'size': 16}
+    }, row=1, col=1)
+    sub_plots.add_annotation(
+        xref='x domain',
+        yref='y domain',
+        xanchor='right',
+        yanchor='bottom',
+        x=1.0,
+        y=-.3,
+        font_size=22,
+        text=bottom_title,
+        showarrow=False,
+        bgcolor='rgba(255,255,255,.85)', row=2, col=1
+    )
+    sub_plots.update_xaxes({
         'title': None,
         'titlefont': {'size':18},
         'ticklabelmode': 'period',
@@ -571,8 +560,8 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
             dict(dtickrange=["M1", "M12"], value="%b\n%Y"),
             dict(dtickrange=["M12", None], value="%Y")
         ]
-    })
-    figure.update_yaxes({
+    }, row=2, col=1)
+    sub_plots.update_yaxes({
         'autorange': 'reversed',
         'title': 'PRES (dbar)',
         'titlefont': {'size': 18},
@@ -584,64 +573,89 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         'linecolor': line_rgb,
         'mirror': True,
         'tickfont': {'size': 16}
-    })
-    df.loc[:, 'time'] = pd.to_datetime(df['time'])
-    df = Info.plug_gaps(df, 'time', 'id', ['latitude', 'longitude', 'site_code', 'id'], 1.25)
-    ts = go.Figure()
-    for idx, d in enumerate(df['id'].unique()):
-        pdf = df.loc[df['id'] == d].copy()  
-        pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
-        if site_json[in_site]['depth_name'] != 'None':
-            pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,site_json[in_site]['depth_name']].astype(str)
-        else:
-            pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)   
-        pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
-        ts.add_traces(pts)
-    ts.update_layout(legend=dict(orientation="v", yanchor="top", y=1.01, xanchor="right", x=1.08, bgcolor='white', font_size=16), 
-                     plot_bgcolor=plot_bg, 
-                     modebar=dict(orientation='h'),
-                     paper_bgcolor="white",
-                     font=dict(size=18), title=ts_title, title_x=.065, title_y=.93, showlegend=True,)
-    ts.update_traces(connectgaps=False)
-    ts.update_xaxes({
-        'ticklabelmode': 'period',
-        'showticklabels': True,
-        'gridcolor': line_rgb,
-        'zeroline': True,
-        'zerolinecolor': line_rgb,
-        'showline': True,
-        'linewidth': 1,
-        'linecolor': line_rgb,
-        'mirror': True,
-        'tickfont': {'size': 16},
-        'tickformatstops' : [
-            dict(dtickrange=[1000, 60000], value="%H:%M:%S\n%d%b%Y"),
-            dict(dtickrange=[60000, 3600000], value="%H:%M\n%d%b%Y"),
-            dict(dtickrange=[3600000, 86400000], value="%H:%M\n%d%b%Y"),
-            dict(dtickrange=[86400000, 604800000], value="%e\n%b %Y"),
-            dict(dtickrange=[604800000, "M1"], value="%b\n%Y"),
-            dict(dtickrange=["M1", "M12"], value="%b\n%Y"),
-            dict(dtickrange=["M12", None], value="%Y")
-        ]
-    })
+    }, row=2, col=1)
 
-    ts.update_yaxes({
-        'title': short_label,
-        'titlefont': {'size': 16},
-        'gridcolor': line_rgb,
-        'zeroline': True,
-        'zerolinecolor': line_rgb,
-        'showline': True,
-        'linewidth': 1,
-        'linecolor': line_rgb,
-        'mirror': True,
-        'tickfont': {'size': 16}
-    })
-    
-    print('Plots from: ' + p_url)
-    #                               download enabled, but resample disabled until you zoom the plot, is_subsampled='yes' required for it to turn on later
-    return [figure, ts, list_group, False, True, True, is_subsampled]
+    return [sub_plots, list_group, False, True, is_subsampled]
 
+
+@app.callback(
+    [
+        Output('time-range-slider', 'value', allow_duplicate=True),
+        Output('start-date', 'value', allow_duplicate=True),
+        Output('end-date', 'value', allow_duplicate=True)
+    ],
+    [
+        Input('time-range-slider', 'value'),
+        Input('start-date', 'value'),
+        Input('end-date', 'value'),
+    ], prevent_initial_call=True
+)
+def set_date_range_from_slider(slide_values, in_start_date, in_end_date,):
+    if slide_values is None or len(slide_values) <= 0:
+        raise exceptions.PreventUpdate
+    if in_start_date is None or len(in_start_date) <= 0:
+        raise exceptions.PreventUpdate
+    if in_end_date is None or len(in_end_date) <= 0:
+        raise exceptions.PreventUpdate
+
+    range_min = all_start_seconds
+    range_max = all_end_seconds
+
+    trigger_id = callback_context.triggered_id
+
+    start_seconds = slide_values[0]
+    end_seconds = slide_values[1]
+
+    start_output = in_start_date
+    end_output = in_end_date
+
+    if trigger_id == 'start-date':
+        try:
+            in_start_date_obj = datetime.datetime.strptime(in_start_date, d_format)
+        except:
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+        start_output = in_start_date_obj.date().strftime(d_format)
+        start_seconds = in_start_date_obj.timestamp()
+        if start_seconds < range_min:
+            start_seconds = range_min
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+            start_output = in_start_date_obj.date().strftime(d_format)
+        elif start_seconds > range_max:
+            start_seconds = range_max
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+            start_output = in_start_date_obj.date().strftime(d_format)
+        elif start_seconds > end_seconds:
+            start_seconds = end_seconds
+            in_start_date_obj = datetime.datetime.fromtimestamp(start_seconds)
+            start_output = in_start_date_obj.date().strftime(d_format)
+        return [no_update, start_output, no_update]
+    elif trigger_id == 'end-date':
+        try:
+            in_end_date_obj = datetime.datetime.strptime(in_end_date, d_format)
+        except:
+            in_end_date_obj = datetime.datetime.fromtimestamp((end_seconds))
+        end_output = in_end_date_obj.date().strftime(d_format)
+        end_seconds = in_end_date_obj.timestamp()
+        if end_seconds < range_min:
+            end_seconds = range_min
+            in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
+            end_output = in_end_date_obj.date().strftime(d_format)
+        elif end_seconds > range_max:
+            end_seconds = range_max
+            in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
+            end_output = in_end_date_obj.date().strftime(d_format)
+        elif end_seconds < start_seconds:
+            end_seconds = start_seconds
+            in_end_date_obj = datetime.datetime.fromtimestamp(end_seconds)
+            end_output = in_end_date_obj.date().strftime(d_format)
+        return [no_update, no_update, end_output]
+    elif trigger_id == 'time-range-slider':
+        in_start_date_obj = datetime.datetime.fromtimestamp(slide_values[0])
+        start_output = in_start_date_obj.strftime(d_format)
+        in_end_date_obj = datetime.datetime.fromtimestamp(slide_values[1])
+        end_output = in_end_date_obj.strftime(d_format)
+        return [no_update, start_output, end_output]
+    return no_update, no_update, no_update
 
 if __name__ == '__main__':
     app.run_server(debug=True, dev_tools_props_check=False)
