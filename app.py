@@ -101,7 +101,7 @@ def get_blank(message):
 
 app.layout = ddk.App(theme=theme.theme, children=[
     html.Div(id='kick'),
-    dcc.Store(id='plot-end-time'),
+    dcc.Store(id='xrange'),
     dcc.Store(id='is-subsampled'),
     ddk.Card(width=.3, children=[
         ddk.Modal(target_id='data-download', hide_target=True, children=[
@@ -183,42 +183,53 @@ app.layout = ddk.App(theme=theme.theme, children=[
 
 
 @app.callback(
-    Output('start-date', 'value', allow_duplicate=True),
-    Output('end-date', 'value', allow_duplicate=True),
+[
+    Output('xrange', 'data'),
     Output('resample', 'disabled', allow_duplicate=True),
+],
+[
     Input('graph', 'relayoutData'),
+],
+[
     State('is-subsampled', 'data'),
-    prevent_initial_call=True
+],prevent_initial_call=True
 )
 def relayout(layout_data, in_is_subsampled):
     # Plot is not subsampled to turn off resample now
     if in_is_subsampled is not None and in_is_subsampled == 'no':
-        return '', '', True
+        return [no_update, no_update]
     disabled = True
     if layout_data is not None and 'xaxis.range[0]' in layout_data and 'xaxis.range[1]' in layout_data:
         start = layout_data['xaxis.range[0]']
         end = layout_data['xaxis.range[1]']
+        xrange = json.dumps([start, end])
         disabled = False
     else:
-        return no_update, no_update, no_update
-    return start, end, disabled
+        return [no_update, no_update]
+    return [xrange, disabled]
 
 
 @app.callback(
-    Output('start-date', 'value', allow_duplicate=True),
-    Output('end-date', 'value', allow_duplicate=True),
+[
+    Output('time-range-slider', 'value', allow_duplicate=True),
+],
+[
     Input('resample', 'n_clicks'),
-    prevent_initial_call=True
+],
+[
+    State('xrange', 'data')
+], prevent_initial_call=True
 )
-def set_date_range_from_plot(click, in_time_start, in_time_end):
-    if in_time_start is not None and in_time_end is not None:
-        dt_start = parser.parse(in_time_start)
-        dt_end =parser.parse(in_time_end)
-        out_start = dt_start.strftime(constants.d_format)
-        out_end = dt_end.strftime(constants.d_format)
-        return [out_start, out_end] 
+def set_date_range_from_plot(click, in_xrange):
+    if in_xrange is not None:
+        xrange = json.loads(in_xrange)
+        dt_start = parser.isoparse(xrange[0])
+        dt_end = parser.isoparse(xrange[1])
+        out_start = dt_start.timestamp()
+        out_end = dt_end.timestamp()
+        return [[out_start, out_end]]
     else:
-        return no_update
+        raise exceptions.PreventUpdate
 
 
 @app.callback(
@@ -336,19 +347,20 @@ def update_location_map(kick, in_site_code):
     [
         Input('site', 'value'),
         Input('variable', 'value'),
-        Input('start-date', 'value'),
-        Input('end-date', 'value')
+        Input('time-range-slider', 'value'),
     ], background=True, manager=background_callback_manager, prevent_initial_call=True
 )
-def update_plots(in_site, in_variable, p_start_date, p_end_date):
+def update_plots(in_site, in_variable, p_slider_values):
     is_subsampled = 'no'
-    if in_site is None or p_start_date is None or p_end_date is None:
-        return [get_blank('A NONE Select a site on the map, a variable, and a date range.'), '', True, True, is_subsampled]
+    if in_site is None or p_slider_values is None:
+        return [get_blank('Select a site on the map, a variable, and a date range.'), '', True, True, is_subsampled]
     variables = site_json[in_site]['variables'].copy()
     variables.append('time')
     bottom_title = site_json[in_site]['title']
     if site_json[in_site]['depth_name'] != 'None':
         variables.append(site_json[in_site]['depth_name'])
+    if site_json[in_site]['has_depth'] == "true" and 'depth' not in variables:
+        variables.append('depth')
     variables.append('site_code')
     variables.append('latitude')
     variables.append('longitude')
@@ -364,8 +376,10 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     list_group.children.append(html.P(children=["Click a format button below to download the full resolution of the data for the selected date range."],
                                       style={'margin-top': '30px'}))
 
-    p_startdt = datetime.datetime.strptime(p_start_date, constants.d_format)
-    p_enddt = datetime.datetime.strptime(p_end_date, constants.d_format)
+    p_startdt = datetime.datetime.fromtimestamp(p_slider_values[0])
+    p_enddt = datetime.datetime.fromtimestamp(p_slider_values[1])
+    p_start_date = p_startdt.strftime(d_format)
+    p_end_date = p_enddt.strftime(d_format)
     time_range = p_enddt - p_startdt
     num_days = time_range.days
     num_hours = num_days*24
@@ -403,9 +417,17 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
             if factor < 1:
                 minutes = int(factor*60)
                 if minutes > 15:
-                    order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
+                    if site_json[in_site]['has_depth'] == "true":
+                        order_by = '&orderByClosest("id,depth,time/'+str(factor)+'hour")'
+                    else:
+                        order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
             else:
-                order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
+                if site_json[in_site]['has_depth'] == "true":
+                    order_by = '&orderByClosest("id,depth,time/'+str(factor)+'hour")'
+                else:
+                    order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
+
+  
         if factor < 1 and factor > .16:
             minutes = int(factor*60)
             if minutes > 15:
@@ -432,6 +454,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     if 'orderByClosest' in order_by:
         is_subsampled = 'yes'
     p_url = p_url + order_by
+    print('getting data  ', p_url)
     df = pd.read_csv(p_url, skiprows=[1])
     hover_vars = ["time", in_variable, "id"]
     if 'PRES' in site_json[in_site]['variables']:
@@ -442,14 +465,17 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
     if 'PRES' not in site_json[in_site]['variables']:
         y_var = site_json[in_site]['depth_name']
     df['text_time'] = df['time'].astype(str)
-    df['text'] = in_variable + '<br>' + df['text_time'] + '<br>' + \
-                    y_var + '=' + df[y_var].astype(str) + '<br>' + \
-                    in_variable + '=' + df[in_variable].apply(lambda x: '{0:.2f}'.format(x))
+    df['text'] = '<b>' + in_variable + '=' + df[in_variable].apply(lambda x: '{0:.2f}'.format(x)) + '</b>' \
+                    + '<br>' + df['text_time'] + '<br>'\
+                    + y_var + '=' + df[y_var].astype(str)
+    if site_json[in_site]['has_depth'] == "true":
+        df['text'] = df['text'] + '<br>depth' + '=' + df['depth'].astype(str)
+    df = df.sort_values(by=['time'], ascending=True)
     trace = go.Scattergl(x=df['time'], y=df[y_var],
                         connectgaps=False,
                         name=in_variable,
                         mode='markers',
-                        # hovertext=read_data['text'],
+                        hovertext=df['text'],
                         marker=dict(
                             cmin=df[in_variable].min(),
                             cmax=df[in_variable].max(),
@@ -471,7 +497,7 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
 
     df.loc[:, 'time'] = pd.to_datetime(df['time'])
     df = Info.plug_gaps(df, 'time', 'id', ['latitude', 'longitude', 'site_code', 'id'], 1.25)
-    ts = go.Figure()
+    ts_traces = []
     for idx, d in enumerate(df['id'].unique()):
         pdf = df.loc[df['id'] == d].copy()  
         pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
@@ -480,13 +506,11 @@ def update_plots(in_site, in_variable, p_start_date, p_end_date):
         else:
             pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)   
         pts = go.Scattergl(mode='lines', x=pdf['time'], y=pdf[in_variable], hoverinfo='text', hovertext=pdf['text'], showlegend=True, name=str(d) , line=dict(color=cc.b_glasbey_bw_minc_20[idx]))
-        ts.add_traces(pts)
-
-    ts.update_traces(connectgaps=False)
+        ts_traces.append(pts)
     
     print('Making plots from: ' + p_url)
     sub_plots = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[450, 450])
-    for ts_trace in list(ts.select_traces()):
+    for ts_trace in ts_traces:
         sub_plots.add_trace(ts_trace, row=1, col=1)
     sub_plots.add_trace(trace, row=2, col=1)
     sub_plots.update_layout(legend=dict(title='ID', orientation="v", yanchor="top", y=1.1, xanchor="right", x=1.08, bgcolor='white', font_size=16), plot_bgcolor=plot_bg, 

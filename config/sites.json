@@ -41,6 +41,7 @@
                 "1665668401": "2022-10"
             },
             "title": "OceanSITES Mooring data from site MOVE1",
+            "has_depth": "true",
             "units": {
                 "time": "seconds since 1970-01-01T00:00:00Z",
                 "latitude": "degrees_north",
@@ -89,6 +90,7 @@
                 "1115033401": "2005-05"
             },
             "title": "OceanSITES Mooring data from site MOVE2",
+            "has_depth": "true",
             "units": {
                 "time": "seconds since 1970-01-01T00:00:00Z",
                 "latitude": "degrees_north",
@@ -137,6 +139,7 @@
                 "1666176001": "2022-10"
             },
             "title": "OceanSITES Mooring data from site MOVE3",
+            "has_depth": "true",
             "units": {
                 "time": "seconds since 1970-01-01T00:00:00Z",
                 "latitude": "degrees_north",
@@ -186,6 +189,7 @@
                 "1569474000": "2019-09"
             },
             "title": "OceanSITES Station KEO Deep T/S Hourly  Data",
+            "has_depth": "true",
             "units": {
                 "time": "seconds since 1970-01-01T00:00:00Z",
                 "latitude": "degrees_north",
@@ -235,6 +239,7 @@
                 "1633132826": "2021-10"
             },
             "title": "OceanSITES EC1 Deep T/S data",
+            "has_depth": "true",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
@@ -284,6 +289,7 @@
                 "1636812901": "2021-11"
             },
             "title": "OceanSITES NTAS mooring Deep T/S data",
+            "has_depth": "true",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
@@ -332,6 +338,7 @@
                 "1400486399": "2014-05"
             },
             "title": "OceanSITES NOG Deep T/S data",
+            "has_depth": "true",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
@@ -379,6 +386,7 @@
                 "1366398001": "2013-04"
             },
             "title": "OceanSITES PAP Deep T/S data",
+            "has_depth": "true",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
@@ -423,6 +431,7 @@
                 "1537979101": "2018-09"
             },
             "title": "OceanSITES WHOTS Deep T/S data",
+            "has_depth": "false",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
@@ -463,6 +472,7 @@
                 "1343811000": "2012-08"
             },
             "title": "OceanSITES IRMINGSEA-1 Deep T/S data",
+            "has_depth": "false",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
@@ -505,6 +515,7 @@
                 "1221395402": "2008-09"
             },
             "title": "OceanSITES IRMINGSEA-2 Deep T/S data",
+            "has_depth": "false",
             "units": {
                 "latitude": "degrees_north",
                 "longitude": "degrees_east",
