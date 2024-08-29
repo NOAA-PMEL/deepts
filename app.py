@@ -16,6 +16,7 @@ from sdig.erddap.info import Info
 import colorcet as cc
 from celery import Celery
 import diskcache
+import numpy as np
 import ssl
 import theme
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -351,16 +352,15 @@ def update_location_map(kick, in_site_code):
     ], background=True, manager=background_callback_manager, prevent_initial_call=True
 )
 def update_plots(in_site, in_variable, p_slider_values):
+    print('plotting fired')
     is_subsampled = 'no'
     if in_site is None or p_slider_values is None:
         return [get_blank('Select a site on the map, a variable, and a date range.'), '', True, True, is_subsampled]
     variables = site_json[in_site]['variables'].copy()
     variables.append('time')
     bottom_title = site_json[in_site]['title']
-    if site_json[in_site]['depth_name'] != 'None':
+    if site_json[in_site]['has_depth'] == "true":
         variables.append(site_json[in_site]['depth_name'])
-    if site_json[in_site]['has_depth'] == "true" and 'depth' not in variables:
-        variables.append('depth')
     variables.append('site_code')
     variables.append('latitude')
     variables.append('longitude')
@@ -418,12 +418,14 @@ def update_plots(in_site, in_variable, p_slider_values):
                 minutes = int(factor*60)
                 if minutes > 15:
                     if site_json[in_site]['has_depth'] == "true":
-                        order_by = '&orderByClosest("id,depth,time/'+str(factor)+'hour")'
+                        d_name = site_json[in_site]['depth_name']
+                        order_by = '&orderByClosest("id,' +d_name +',time/'+str(factor)+'hour")'
                     else:
                         order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
             else:
                 if site_json[in_site]['has_depth'] == "true":
-                    order_by = '&orderByClosest("id,depth,time/'+str(factor)+'hour")'
+                    d_name = site_json[in_site]['depth_name']
+                    order_by = '&orderByClosest("id,' + d_name + ',time/'+str(factor)+'hour")'
                 else:
                     order_by = '&orderByClosest("id,time/'+str(factor)+'hour")'
 
@@ -442,7 +444,8 @@ def update_plots(in_site, in_variable, p_slider_values):
     # Use minimum depth if defined
     depth_con = ''
     if 'minimum_depth' in site_json[in_site]:
-        depth_con = '&depth>' + str(site_json[in_site]['minimum_depth'])
+        d_name = site_json[in_site]['depth_name']
+        depth_con = '&' + d_name + '>' + str(site_json[in_site]['minimum_depth'])
     p_url = url
     p_url = p_url + '.csv?' + get_vars + depth_con + time_con
     item = dcc.Link('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
@@ -456,20 +459,40 @@ def update_plots(in_site, in_variable, p_slider_values):
     p_url = p_url + order_by
     print('getting data  ', p_url)
     df = pd.read_csv(p_url, skiprows=[1])
+    if 'multiple_depths' in site_json[in_site]:
+        # Data set has multiple depths per ID so the timeseries will backtrack on itself with at the end of the section.
+        # Other data sets are one nominal depth per ID
+        # This makes a new ID that is the combination of the old ID and the depth
+        d_name = site_json[in_site]['depth_name']
+        df['id'] = df['id'] + '_' +df[d_name].astype(str)
+        # This code inserts a NaN at the depth changes so the plots does not double back on itself, but
+        # the above is better since you can click on and off the depths like other data sets
+        # cols = df.columns
+        # df['mask'] = df['depth'].ne(df['depth'].shift(-1))
+        # df_dup = df[df['mask']].copy()
+        # df_dup[in_variable] = np.nan
+        # df_dup.index += .5
+        # df = pd.concat([df_dup, df])
+        # df = df.sort_index()
+        # df = df[cols]
+        # df = df.reset_index()
     hover_vars = ["time", in_variable, "id"]
-    if 'PRES' in site_json[in_site]['variables']:
-        hover_vars.append("PRES")
-    if site_json[in_site]['depth_name'] != 'None':
-        hover_vars.append(site_json[in_site]['depth_name'])
-    y_var = 'PRES'
-    if 'PRES' not in site_json[in_site]['variables']:
+    if site_json[in_site]['has_pressure'] == "true":
+        hover_vars.append(site_json[in_site]['pressure_name'])
+        y_var = site_json[in_site]['pressure_name']
+    else:
         y_var = site_json[in_site]['depth_name']
+
+    if site_json[in_site]['has_depth'] == 'true':
+        hover_vars.append(site_json[in_site]['depth_name'])
+        
     df['text_time'] = df['time'].astype(str)
     df['text'] = '<b>' + in_variable + '=' + df[in_variable].apply(lambda x: '{0:.2f}'.format(x)) + '</b>' \
                     + '<br>' + df['text_time'] + '<br>'\
                     + y_var + '=' + df[y_var].astype(str)
     if site_json[in_site]['has_depth'] == "true":
-        df['text'] = df['text'] + '<br>depth' + '=' + df['depth'].astype(str)
+        d_name = site_json[in_site]['depth_name']
+        df['text'] = df['text'] + '<br>' + d_name + '=' + df[d_name].astype(str)
     df = df.sort_values(by=['time'], ascending=True)
     trace = go.Scattergl(x=df['time'], y=df[y_var],
                         connectgaps=False,
@@ -501,7 +524,7 @@ def update_plots(in_site, in_variable, p_slider_values):
     for idx, d in enumerate(df['id'].unique()):
         pdf = df.loc[df['id'] == d].copy()  
         pdf.loc[:, 'texttime'] = pdf.loc[:,'time'].dt.strftime(fmt)
-        if site_json[in_site]['depth_name'] != 'None':
+        if site_json[in_site]['has_depth'] == 'true':
             pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d) + '<br> at depth: ' + pdf.loc[:,site_json[in_site]['depth_name']].astype(str)
         else:
             pdf.loc[:,'text'] = 'Time: ' + pdf.loc[:,'texttime'] + '<br>' + in_variable + ': ' + pdf.loc[:,in_variable].astype(str) + '<br>for file: ' + str(d)   
@@ -585,9 +608,10 @@ def update_plots(in_site, in_variable, p_slider_values):
             dict(dtickrange=["M12", None], value="%Y")
         ]
     }, row=2, col=1)
+    p_name = site_json[in_site]['pressure_name'] + ' *dbar'
     sub_plots.update_yaxes({
         'autorange': 'reversed',
-        'title': 'PRES (dbar)',
+        'title': p_name,
         'titlefont': {'size': 18},
         'gridcolor': line_rgb,
         'zeroline': True,

@@ -20,7 +20,8 @@ logging.basicConfig(level=logging.DEBUG)
 def load_locations():
     locations_df = None
     with open("config/sites.json", "r+") as site_file:
-        site_json = json.load(site_file)
+        config = json.load(site_file)
+    site_json = config['sites']
     for site in site_json:
         site_df = pd.read_csv(site_json[site]['locations'], skiprows=[1])
         if site_df.shape[1] > 1:
