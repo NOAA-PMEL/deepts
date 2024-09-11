@@ -2,9 +2,9 @@
 dash-enterprise-libraries
 celery
 gunicorn
-pandas
+pandas==2.0.3
 redis
-SQLAlchemy
+SQLAlchemy==1.4.52
 pg8000
 colorcet
 diskcache
