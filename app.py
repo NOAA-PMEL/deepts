@@ -324,8 +324,8 @@ def update_location_map(kick, in_site_code):
                 ]
             },
         ],
-        mapbox_zoom=1.1,
-        mapbox_center={'lat': locations_df['latitude'].mean(), 'lon': locations_df['longitude'].mean()},
+        mapbox_zoom=1.5,
+        mapbox_center={'lat': locations_df['latitude'].mean(), 'lon': (locations_df['longitude'].mean()+20.)},
         margin={"r": 0, "t": 0, "l": 0, "b": 0},
         legend=dict(
             orientation="v",
