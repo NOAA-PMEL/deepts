@@ -1,5 +1,6 @@
 --extra-index-url https://dash-temp.pmel.noaa.gov/packages
-dash-enterprise-libraries
+dash-design-kit
+dash-enterprise-libraries==1.4.1
 celery
 gunicorn
 redis
