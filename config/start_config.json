@@ -130,7 +130,7 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL"],
-            "obs_per_hour": 2,
+            "obs_per_hour": 12,
             "depth_name": "depth",
             "minimum_depth": 2000,
             "pressure_name": "PRES_REL"
@@ -140,7 +140,7 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "CNDC", "PSAL"],
-            "obs_per_hour": 2,
+            "obs_per_hour": 4,
             "depth_name": "depth",
             "minimum_depth": 2000,
             "pressure_name": "PRES"

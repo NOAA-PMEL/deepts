@@ -654,7 +654,7 @@
                 "TEMP",
                 "PSAL"
             ],
-            "obs_per_hour": 2,
+            "obs_per_hour": 12,
             "depth_name": "depth",
             "minimum_depth": 2000,
             "pressure_name": "PRES_REL",
@@ -703,7 +703,7 @@
                 "CNDC",
                 "PSAL"
             ],
-            "obs_per_hour": 2,
+            "obs_per_hour": 4,
             "depth_name": "depth",
             "minimum_depth": 2000,
             "pressure_name": "PRES",

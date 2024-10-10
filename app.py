@@ -472,7 +472,6 @@ def update_plots(in_site, in_variable, p_slider_values):
     if 'orderByClosest' in order_by:
         is_subsampled = 'yes'
     p_url = p_url + order_by
-    print('getting data  ', p_url)
     df = pd.read_csv(p_url, skiprows=[1])
     if 'multiple_depths' in site_json[in_site]:
         # Data set has multiple depths per ID so the timeseries will backtrack on itself with at the end of the section.
