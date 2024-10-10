@@ -4,6 +4,7 @@ import dash_design_kit as ddk
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import dash_ag_grid as dag
 import pandas as pd
 import redis
 import os
@@ -105,7 +106,7 @@ app.layout = ddk.App(theme=theme.theme, children=[
     dcc.Store(id='xrange'),
     dcc.Store(id='is-subsampled'),
     ddk.Card(width=.3, children=[
-        ddk.Modal(target_id='data-download', hide_target=True, children=[
+        ddk.Modal(target_id='data-download', width='625px', hide_target=True, children=[
             dcc.Loading(html.Button("Download Data", id='download-button', disabled=True))
         ]),
         ddk.Card(children=[
@@ -178,7 +179,27 @@ app.layout = ddk.App(theme=theme.theme, children=[
     ]),
     ddk.Card(id='data-download', children=[
         ddk.CardHeader('Download Data'),
-        html.Div(id='download-body')
+        dag.AgGrid(
+            style={'height': 250},
+            id="download-grid",
+            defaultColDef={"cellRenderer": "markdown"},
+            columnDefs=[
+                {'field': 'html', 'headerName': 'HTML Table', 'linkTarget': '_blank', 
+                
+                },
+                {'field': 'netCDF', 'headerName': 'CF netCDF File', "linkTarget":"_blank",
+                    "cellStyle": {
+                        "color": "rgb(31, 120, 180)",
+                        "text-decoration": "underline",
+                        "cursor": "pointer",
+                    },
+                },
+                {'field': 'csv', 'headerName': 'CSV File', 'linkTarget': '_blank', 
+                
+                },
+            ],
+        ),
+        ddk.CardFooter(id='metadata-link')
     ])
 ])
 
@@ -340,7 +361,8 @@ def update_location_map(kick, in_site_code):
 @app.callback(
     [
         Output('graph', 'figure'),
-        Output('download-body', 'children'),
+        Output('download-grid', 'rowData'),
+        Output('metadata-link', 'children'),
         Output('download-button', 'disabled'),
         Output('resample', 'disabled'),
         Output('is-subsampled', 'data')
@@ -355,12 +377,14 @@ def update_plots(in_site, in_variable, p_slider_values):
     print('plotting fired')
     is_subsampled = 'no'
     if in_site is None or p_slider_values is None:
-        return [get_blank('Select a site on the map, a variable, and a date range.'), '', True, True, is_subsampled]
+        return [get_blank('Select a site on the map, a variable, and a date range.'), [], no_update, True, True, is_subsampled]
     variables = site_json[in_site]['variables'].copy()
     variables.append('time')
     bottom_title = site_json[in_site]['title']
     if site_json[in_site]['has_depth'] == "true":
         variables.append(site_json[in_site]['depth_name'])
+    if site_json[in_site]['has_pressure'] == "true":
+        variables.append(site_json[in_site]['pressure_name'])
     variables.append('site_code')
     variables.append('latitude')
     variables.append('longitude')
@@ -369,13 +393,7 @@ def update_plots(in_site, in_variable, p_slider_values):
     units = site_json[in_site]['units']
 
     url = site_json[in_site]['url']
-    list_group = html.Div()
-    list_group.children = []
     meta_item = dcc.Link('ERDDAP data page for '+ in_site, href=url, target='_blank')
-    list_group.children.append(meta_item)
-    list_group.children.append(html.P(children=["Click a format button below to download the full resolution of the data for the selected date range."],
-                                      style={'margin-top': '30px'}))
-
     p_startdt = datetime.datetime.fromtimestamp(p_slider_values[0])
     p_enddt = datetime.datetime.fromtimestamp(p_slider_values[1])
     p_start_date = p_startdt.strftime(d_format)
@@ -384,7 +402,7 @@ def update_plots(in_site, in_variable, p_slider_values):
     num_days = time_range.days
     num_hours = num_days*24
     if in_variable is None or len(in_variable) == 0:
-        return [get_blank('NO VARIABLE Select a site on the map, a variable, and a date range.'), get_blank('Select a site on the map, a variable, and a date range.'), list_group, False, True, True, is_subsampled]
+        return [get_blank('NO VARIABLE Select a site on the map, a variable, and a date range.'), [], no_update, False, True, is_subsampled]
     if in_variable == 'PSAL':
         cs=px.colors.sequential.Viridis
     else:
@@ -448,12 +466,9 @@ def update_plots(in_site, in_variable, p_slider_values):
         depth_con = '&' + d_name + '>' + str(site_json[in_site]['minimum_depth'])
     p_url = url
     p_url = p_url + '.csv?' + get_vars + depth_con + time_con
-    item = dcc.Link('.html', href=p_url.replace('.csv', '.htmlTable'), target='_blank')
-    list_group.children.append(item)
-    item = dcc.Link('.csv', href=p_url.replace('.htmlTable', '.csv'), target='_blank')
-    list_group.children.append(item)
-    item = dcc.Link('.nc', href=p_url.replace('.csv', '.ncCF'), target='_blank')
-    list_group.children.append(item)
+    html_link = p_url.replace('.csv', '.htmlTable')
+    csv_link = p_url.replace('.htmlTable', '.csv')
+    netcdf_link = p_url.replace('.csv', '.ncCF')
     if 'orderByClosest' in order_by:
         is_subsampled = 'yes'
     p_url = p_url + order_by
@@ -622,8 +637,10 @@ def update_plots(in_site, in_variable, p_slider_values):
         'mirror': True,
         'tickfont': {'size': 16}
     }, row=2, col=1)
-
-    return [sub_plots, list_group, False, True, is_subsampled]
+    download_grid = [
+        {'netCDF': f'[.nc]({netcdf_link})', 'csv': f'[.csv]({csv_link})', 'html': f'[.html]({html_link})'}
+    ]
+    return [sub_plots, download_grid, meta_item, False, True, is_subsampled]
 
 
 @app.callback(

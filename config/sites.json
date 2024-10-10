@@ -9,7 +9,6 @@
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/LOCO_MOZCHANNEL_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": [
                 "TEMP",
-                "PRES",
                 "CNDC",
                 "PSAL"
             ],
@@ -58,8 +57,7 @@
             "variables": [
                 "CNDC",
                 "TEMP",
-                "PSAL",
-                "PRESS"
+                "PSAL"
             ],
             "obs_per_hour": 12,
             "depth_name": "depth",
@@ -111,7 +109,6 @@
             "variables": [
                 "CNDC",
                 "TEMP",
-                "PRES",
                 "PSAL",
                 "DENS"
             ],
@@ -163,7 +160,6 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": [
-                "PRES",
                 "TEMP",
                 "PSAL",
                 "CNDC"
@@ -215,7 +211,6 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": [
-                "PRES",
                 "TEMP",
                 "PSAL",
                 "CNDC"
@@ -267,7 +262,6 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": [
-                "PRES",
                 "TEMP",
                 "PSAL",
                 "CNDC"
@@ -319,7 +313,6 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": [
-                "PRES",
                 "TEMP",
                 "PSAL",
                 "DENS",
@@ -373,7 +366,6 @@
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": [
-                "PRES",
                 "TEMP",
                 "PSAL",
                 "DOX2"
@@ -426,7 +418,6 @@
             "variables": [
                 "TEMP",
                 "PSAL",
-                "PRES",
                 "CNDC"
             ],
             "obs_per_hour": 1,
@@ -479,7 +470,6 @@
             "variables": [
                 "TEMP",
                 "PSAL",
-                "PRES",
                 "CNDC"
             ],
             "obs_per_hour": 1,
@@ -529,16 +519,15 @@
             "variables": [
                 "TEMP",
                 "PSAL",
-                "PRES",
                 "CNDC"
             ],
             "obs_per_hour": 72,
             "depth_name": "None",
             "pressure_name": "PRES",
-            "start_date": "2015-07-12",
-            "start_date_seconds": 1436685001.0,
+            "start_date": "2012-06-14",
+            "start_date_seconds": 1339659000.0,
             "end_date": "2018-09-26",
-            "end_date_seconds": 1537979101.0,
+            "end_date_seconds": 1537979341.0,
             "long_names": {
                 "site_code": "Platform code",
                 "id": "Filename id",
@@ -561,8 +550,8 @@
                 "PSAL": "psu"
             },
             "time_marks": {
-                "1436685001": "2015-07",
-                "1537979101": "2018-09"
+                "1339659000": "2012-06",
+                "1537979341": "2018-09"
             },
             "title": "OceanSITES WHOTS Deep T/S data",
             "has_depth": "false",
@@ -657,6 +646,104 @@
             "title": "OceanSITES IRMINGSEA-2 Deep T/S data",
             "has_depth": "true",
             "has_pressure": "false"
+        },
+        "IMOS_EAC": {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": [
+                "TEMP",
+                "PSAL"
+            ],
+            "obs_per_hour": 2,
+            "depth_name": "depth",
+            "minimum_depth": 2000,
+            "pressure_name": "PRES_REL",
+            "start_date": "2015-05-15",
+            "start_date_seconds": 1431648001.0,
+            "end_date": "2016-11-10",
+            "end_date_seconds": 1478820004.0,
+            "long_names": {
+                "site_code": "Platform code",
+                "id": "Filename id",
+                "depth": "Depth of each measurement",
+                "latitude": "Latitude of each location",
+                "longitude": "Longitude of each location",
+                "PRES_REL": "Sea water pressure due to sea water",
+                "PRES_REL_QC": "Quality flag for sea_water_pressure_due_to_sea_water",
+                "PSAL": "Sea water salinity",
+                "TEMP": "Sea water temperature",
+                "TEMP_QC": "Quality flag for sea_water_temperature",
+                "time": "Time",
+                "ZPOS": "Actual depth",
+                "ZPOS_QC": "Quality flag for depth"
+            },
+            "units": {
+                "depth": "m",
+                "latitude": "degrees_north",
+                "longitude": "degrees_east",
+                "PRES_REL": "dbar",
+                "PSAL": "PSU",
+                "TEMP": "degree_C",
+                "time": "seconds since 1970-01-01T00:00:00Z",
+                "ZPOS": "m"
+            },
+            "time_marks": {
+                "1431648001": "2015-05",
+                "1478820004": "2016-11"
+            },
+            "title": "OceanSITES IMOS EAC Deep T/S data",
+            "has_depth": "true",
+            "has_pressure": "true"
+        },
+        "PAP": {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": [
+                "TEMP",
+                "CNDC",
+                "PSAL"
+            ],
+            "obs_per_hour": 2,
+            "depth_name": "depth",
+            "minimum_depth": 2000,
+            "pressure_name": "PRES",
+            "start_date": "2012-05-05",
+            "start_date_seconds": 1336221001.0,
+            "end_date": "2013-04-19",
+            "end_date_seconds": 1366398001.0,
+            "long_names": {
+                "site_code": "Platform code",
+                "id": "Filename id",
+                "latitude": "Latitude",
+                "longitude": "Longitude",
+                "time": "Time",
+                "depth": "Depth of each measurement",
+                "TEMP": "Temperature",
+                "TEMP_QC": "Quality flag for temperature in degrees celsius at nominal depths of 4850 meter(s)",
+                "CNDC": "Sea water electrical conductivity",
+                "CNDC_QC": "Quality flag for conductivity in ms/cm at nominal depths of 4850 meter(s)",
+                "PSAL": "Sea water salinity",
+                "PSAL_QC": "Quality flag for practical psal units for each nominal depth(s) of 4850 meter(s)",
+                "PRES": "Sea water pressure",
+                "PRES_QC": "Quality flag for pres (dbar) at nominal depths of 4850 meter(s)"
+            },
+            "units": {
+                "latitude": "degrees_north",
+                "longitude": "degrees_east",
+                "time": "seconds since 1970-01-01T00:00:00Z",
+                "depth": "m",
+                "TEMP": "degree_Celsius",
+                "CNDC": "mS/cm",
+                "PSAL": "0.001",
+                "PRES": "decibar"
+            },
+            "time_marks": {
+                "1336221001": "2012-05",
+                "1366398001": "2013-04"
+            },
+            "title": "OceanSITES PAP Deep T/S data",
+            "has_depth": "true",
+            "has_pressure": "true"
         }
     }
 }

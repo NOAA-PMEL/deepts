@@ -3,7 +3,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/LOCO_MOZCHANNEL_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/LOCO_MOZCHANNEL_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["TEMP", "PRES", "CNDC", "PSAL"],
+            "variables": ["TEMP", "CNDC", "PSAL"],
             "obs_per_hour": 90,
             "min_depth": 2000,
             "depth_name": "depth",
@@ -14,7 +14,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/Stratus_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/Stratus_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["CNDC", "TEMP", "PSAL", "PRESS"],
+            "variables": ["CNDC", "TEMP", "PSAL"],
             "obs_per_hour": 12,
             "depth_name": "depth",
             "pressure_name": "PRESS"
@@ -23,7 +23,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAPA_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAPA_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["CNDC", "TEMP", "PRES", "PSAL", "DENS"],
+            "variables": ["CNDC", "TEMP", "PSAL", "DENS"],
             "obs_per_hour": 10,
             "depth_name": "depth",
             "pressure_name": "PRES"
@@ -32,7 +32,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
+            "variables": ["TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17,
             "depth_name": "depth",
@@ -43,7 +43,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
+            "variables": ["TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17,
             "depth_name": "depth",
@@ -54,7 +54,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "CNDC"],
+            "variables": ["TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17,
             "depth_name": "depth",
@@ -65,7 +65,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "DENS", "CNDC"],
+            "variables": ["TEMP", "PSAL", "DENS", "CNDC"],
             "obs_per_hour": 6,
             "depth_name": "depth",
             "pressure_name": "PRES"
@@ -74,7 +74,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["PRES", "TEMP", "PSAL", "DOX2"],
+            "variables": ["TEMP", "PSAL", "DOX2"],
             "minimum_depth": 2000,
             "obs_per_hour": 4,
             "depth_name": "depth",
@@ -84,7 +84,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 1,
             "depth_name": "depth",
             "pressure_name": "PRES"
@@ -93,7 +93,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NOG_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NOG_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 1,
             "depth_name": "depth",
             "pressure_name": "PRES"
@@ -102,7 +102,7 @@
         {
             "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/WHOTS_deepTS",
             "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/WHOTS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["TEMP", "PSAL", "PRES", "CNDC"],
+            "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 72,
             "depth_name": "None",
             "pressure_name": "PRES"
@@ -124,5 +124,25 @@
             "obs_per_hour": 12,
             "depth_name": "depth_min",
             "pressure_name": "None"
+        },
+    "IMOS_EAC":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "PSAL"],
+            "obs_per_hour": 2,
+            "depth_name": "depth",
+            "minimum_depth": 2000,
+            "pressure_name": "PRES_REL"
+        },
+    "PAP":
+        {
+            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS",
+            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["TEMP", "CNDC", "PSAL"],
+            "obs_per_hour": 2,
+            "depth_name": "depth",
+            "minimum_depth": 2000,
+            "pressure_name": "PRES"
         }
 }

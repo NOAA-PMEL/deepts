@@ -13,4 +13,5 @@ psutil
 multiprocess
 dash-design-kit
 dash-enterprise-libraries==1.4.1
+dash_ag_grid
 git+https://github.com/noaaroland/sdig.git
