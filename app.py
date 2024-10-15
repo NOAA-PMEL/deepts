@@ -49,7 +49,7 @@ server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = ' Version v2.0'
+version = ' Version v2.1' # Fancy download table
 
 fmt = '%Y-%m-%d %H:%M'
 fmtz = '%Y-%m-%d %H:%M:%sZ'
@@ -106,7 +106,7 @@ app.layout = ddk.App(theme=theme.theme, children=[
     dcc.Store(id='xrange'),
     dcc.Store(id='is-subsampled'),
     ddk.Card(width=.3, children=[
-        ddk.Modal(target_id='data-download', width='625px', hide_target=True, children=[
+        ddk.Modal(target_id='data-download', width='225px', hide_target=True, children=[
             dcc.Loading(html.Button("Download Data", id='download-button', disabled=True))
         ]),
         ddk.Card(children=[
@@ -178,24 +178,18 @@ app.layout = ddk.App(theme=theme.theme, children=[
         ]),
     ]),
     ddk.Card(id='data-download', children=[
-        ddk.CardHeader('Download Data'),
+        ddk.CardHeader('Download the Data a full resolution:'),
         dag.AgGrid(
             style={'height': 250},
             id="download-grid",
             defaultColDef={"cellRenderer": "markdown"},
             columnDefs=[
-                {'field': 'html', 'headerName': 'HTML Table', 'linkTarget': '_blank', 
-                
-                },
-                {'field': 'netCDF', 'headerName': 'CF netCDF File', "linkTarget":"_blank",
+                {'field': 'link', 'headerName': 'Download Format', 'linkTarget': '_blank', 
                     "cellStyle": {
                         "color": "rgb(31, 120, 180)",
                         "text-decoration": "underline",
                         "cursor": "pointer",
-                    },
-                },
-                {'field': 'csv', 'headerName': 'CSV File', 'linkTarget': '_blank', 
-                
+                    },                
                 },
             ],
         ),
@@ -637,7 +631,9 @@ def update_plots(in_site, in_variable, p_slider_values):
         'tickfont': {'size': 16}
     }, row=2, col=1)
     download_grid = [
-        {'netCDF': f'[.nc]({netcdf_link})', 'csv': f'[.csv]({csv_link})', 'html': f'[.html]({html_link})'}
+        {'link': f'[HTML Table]({html_link})'},
+        {'link': f'[CF netCDF File]({netcdf_link})'}, 
+        {'link': f'[CSV File]({csv_link})'}, 
     ]
     return [sub_plots, download_grid, meta_item, False, True, is_subsampled]
 
