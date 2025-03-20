@@ -1,8 +1,8 @@
 {
     "LOCO_MOZCHANNEL":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/LOCO_MOZCHANNEL_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/LOCO_MOZCHANNEL_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/LOCO_MOZCHANNEL_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/LOCO_MOZCHANNEL_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "CNDC", "PSAL"],
             "obs_per_hour": 90,
             "min_depth": 2000,
@@ -12,8 +12,8 @@
         },
     "Stratus":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/Stratus_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/Stratus_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/Stratus_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/Stratus_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["CNDC", "TEMP", "PSAL"],
             "obs_per_hour": 12,
             "depth_name": "depth",
@@ -21,17 +21,17 @@
         },
     "PAPA":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAPA_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAPA_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
-            "variables": ["CNDC", "TEMP", "PSAL", "DENS"],
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/PAPA_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/PAPA_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "variables": ["CNDC", "TEMP", "PSAL"],
             "obs_per_hour": 10,
             "depth_name": "depth",
             "pressure_name": "PRES"
         },
     "MOVE1":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/MOVE1_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/MOVE1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17,
@@ -41,8 +41,8 @@
         },
     "MOVE2":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/MOVE2_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/MOVE2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17,
@@ -52,8 +52,8 @@
         },
     "MOVE3":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/MOVE3_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/MOVE3_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/MOVE3_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "minimum_depth": 2000,
             "obs_per_hour": 17,
@@ -63,8 +63,8 @@
         },
     "KEO":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/KEO_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/KEO_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/KEO_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "DENS", "CNDC"],
             "obs_per_hour": 6,
             "depth_name": "depth",
@@ -72,8 +72,8 @@
         },
     "EC1":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/EC1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/EC1_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/EC1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "DOX2"],
             "minimum_depth": 2000,
             "obs_per_hour": 4,
@@ -82,8 +82,8 @@
         },
     "NTAS": 
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NTAS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/NTAS_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/NTAS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 1,
             "depth_name": "depth",
@@ -91,8 +91,8 @@
         },
     "NOG":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NOG_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/NOG_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/NOG_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/NOG_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 1,
             "depth_name": "depth",
@@ -100,8 +100,8 @@
         },
     "WHOTS":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/WHOTS_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/WHOTS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/WHOTS_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/WHOTS_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 72,
             "depth_name": "None",
@@ -109,8 +109,8 @@
         },
     "IRMINGSEA1":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA1_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/IRMINGSEA1_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/IRMINGSEA1_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 12,
             "depth_name": "depth_min",
@@ -118,8 +118,8 @@
         },
     "IRMINGSEA2":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA2_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IRMINGSEA2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/IRMINGSEA2_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/IRMINGSEA2_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL", "CNDC"],
             "obs_per_hour": 12,
             "depth_name": "depth_min",
@@ -127,8 +127,8 @@
         },
     "IMOS_EAC":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/IMOS_EAC_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/IMOS_EAC_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/IMOS_EAC_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "PSAL"],
             "obs_per_hour": 12,
             "depth_name": "depth",
@@ -137,8 +137,8 @@
         },
     "PAP":
         {
-            "url": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS",
-            "locations": "https://datalocal.pmel.noaa.gov/erddap/tabledap/PAP_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
+            "url": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/PAP_deepTS",
+            "locations": "https://data.pmel.noaa.gov/pmel/erddap/tabledap/PAP_deepTS.csv?site_code%2Clatitude%2Clongitude&distinct()",
             "variables": ["TEMP", "CNDC", "PSAL"],
             "obs_per_hour": 4,
             "depth_name": "depth",
