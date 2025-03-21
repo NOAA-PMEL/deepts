@@ -1,5 +1,5 @@
 --extra-index-url https://dash-temp.pmel.noaa.gov/packages
-dash==2.18.0
+dash
 plotly>=6.0.1
 celery
 gunicorn

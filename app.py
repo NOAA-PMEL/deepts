@@ -718,4 +718,4 @@ def set_date_range_from_slider(slide_values, in_start_date, in_end_date,):
     return no_update, no_update, no_update
 
 if __name__ == '__main__':
-    app.run_server(debug=True, dev_tools_props_check=False)
+    app.run(debug=True, dev_tools_props_check=False)
