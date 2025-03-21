@@ -1,6 +1,6 @@
 --extra-index-url https://dash-temp.pmel.noaa.gov/packages
 dash==2.18.0
-plotly==5.24.0
+plotly>=6.0.1
 celery
 gunicorn
 redis

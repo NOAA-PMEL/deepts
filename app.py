@@ -308,7 +308,7 @@ def set_selected_site(in_click, in_site):
 def update_location_map(kick, in_site_code):
     locations_df = db.get_locations()
     figure = go.Figure()
-    black_trace = go.Scattermapbox(lat=locations_df['latitude'].values,
+    black_trace = go.Scattermap(lat=locations_df['latitude'].values,
                                 lon=locations_df['longitude'].values,
                                 hovertext=locations_df['site_code'],
                                 hoverinfo='lat+lon+text',
@@ -318,29 +318,29 @@ def update_location_map(kick, in_site_code):
     figure.add_trace(black_trace)
     if in_site_code is not None:
         yellow_df = locations_df.loc[locations_df['site_code'] == in_site_code]
-        yellow_trace = go.Scattermapbox(lat=yellow_df['latitude'].values,
+        yellow_trace = go.Scattermap(lat=yellow_df['latitude'].values,
                             lon=yellow_df['longitude'].values,
                             hovertext=[in_site_code],
                             hoverinfo='lat+lon+text',
                             customdata=[in_site_code],
-                            marker={'color': 'yellow', 'size': 10},
+                            marker={'color': 'yellow', 'size': 14},
                             mode='markers')
         figure.add_trace(yellow_trace)
     figure.update_layout(
         showlegend=False,
-        mapbox_style="white-bg",
-        mapbox_layers=[
+        map_style="white-bg",
+        map_layers=[
             {
                 "below": 'traces',
                 "sourcetype": "raster",
-                "sourceattribution": "Powered by Esri",
+                "sourceattribution": "&nbsp;GEBCO &amp; NCEI&nbsp;",
                 "source": [
-                    'https://ibasemaps-api.arcgis.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}?token=' + ESRI_API_KEY
+                    'https://tiles.arcgis.com/tiles/C8EMgrsFcRFL6LrL/arcgis/rest/services/GEBCO_basemap_NCEI/MapServer/tile/{z}/{y}/{x}'
                 ]
             },
         ],
-        mapbox_zoom=1.5,
-        mapbox_center={'lat': locations_df['latitude'].mean(), 'lon': (locations_df['longitude'].mean()+20.)},
+        map_zoom=1.5,
+        map_center={'lat': locations_df['latitude'].mean(), 'lon': (locations_df['longitude'].mean()+20.)},
         margin={"r": 0, "t": 0, "l": 0, "b": 0},
         legend=dict(
             orientation="v",
@@ -368,7 +368,7 @@ def update_location_map(kick, in_site_code):
     ], background=True, manager=background_callback_manager, prevent_initial_call=True
 )
 def update_plots(in_site, in_variable, p_slider_values):
-    print('plotting fired')
+    #DEBUG print('plotting fired')
     is_subsampled = 'no'
     if in_site is None or p_slider_values is None:
         return [get_blank('Select a site on the map, a variable, and a date range.'), [], no_update, True, True, is_subsampled]
@@ -571,7 +571,7 @@ def update_plots(in_site, in_variable, p_slider_values):
     }, row=1, col=1)
     sub_plots.update_yaxes({
         'title': short_label,
-        'titlefont': {'size': 16},
+        'title': {'font':{'size': 16}},
         'gridcolor': line_rgb,
         'zeroline': True,
         'zerolinecolor': line_rgb,
@@ -595,7 +595,7 @@ def update_plots(in_site, in_variable, p_slider_values):
     )
     sub_plots.update_xaxes({
         'title': None,
-        'titlefont': {'size':18},
+        'title': {'font':{'size':18}},
         'ticklabelmode': 'period',
         'showticklabels': True,
         'gridcolor': line_rgb,
@@ -620,7 +620,7 @@ def update_plots(in_site, in_variable, p_slider_values):
     sub_plots.update_yaxes({
         'autorange': 'reversed',
         'title': p_name,
-        'titlefont': {'size': 18},
+        'title': {'font':{'size': 18}},
         'gridcolor': line_rgb,
         'zeroline': True,
         'zerolinecolor': line_rgb,
