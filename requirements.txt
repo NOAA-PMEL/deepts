@@ -4,9 +4,9 @@ plotly>=6.0.1
 celery
 gunicorn
 redis
-pandas
+pandas>=2.2.3
 pg8000
-SQLAlchemy
+SQLAlchemy>=2
 colorcet
 diskcache
 psutil

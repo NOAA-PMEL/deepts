@@ -33,7 +33,8 @@ def load_locations():
         else:
             locations_df = pd.concat([locations_df, site_df])
     locations_df = locations_df.reset_index()
-    locations_df.to_sql(constants.location_table, constants.postgres_engine, if_exists='replace', index=False, chunksize=1500, method='multi')
+    with constants.postgres_engine.connect() as conn:
+        locations_df.to_sql(constants.location_table, con=conn, if_exists='replace', index=False, chunksize=1500, method='multi')
 
 def load_observations():
     with open("config/sites.json", "r+") as site_file:
@@ -90,9 +91,11 @@ def load_observations():
             # and when if_exists='replace', a new table overwrites the old one.
             logging.info('Updating data...')
             if isite == 0:
-                df.to_sql(constants.data_table, constants.postgres_engine, if_exists='replace', index=False, chunksize=1500, method='multi')
+                with constants.postgres_engine.connect() as conn:
+                    df.to_sql(constants.data_table, con=conn, if_exists='replace', index=False, chunksize=1500, method='multi')
             else:
-                df.to_sql(constants.data_table, constants.postgres_engine, if_exists='append', index=False, chunksize=1500, method='multi')            
+                with constants.postgres_engine.connect() as conn:
+                    df.to_sql(constants.data_table, con=conn, if_exists='append', index=False, chunksize=1500, method='multi')            
             # logging.info('Updating counts...')
             # counts_df.to_sql(constants.counts_table, constants.postgres_engine, if_exists='replace', index=False)
             # logging.info('Updating locations...')
