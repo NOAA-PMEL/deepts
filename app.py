@@ -49,7 +49,7 @@ server = app.server  # expose server variable for Procfile
 redis_instance = redis.StrictRedis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"))
 ESRI_API_KEY = os.environ.get('ESRI_API_KEY')
 
-version = ' Version v2.1' # Fancy download table
+version = ' Version v3.1' # db backed locations
 
 fmt = '%Y-%m-%d %H:%M'
 fmtz = '%Y-%m-%d %H:%M:%sZ'
