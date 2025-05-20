@@ -38,7 +38,7 @@ line_rgb = 'rgba(.04,.04,.04,.2)'
 plot_bg = 'rgba(1.0, 1.0, 1.0 ,1.0)'
 
 
-app = app = EnterpriseDash(__name__, background_callback_manager=background_callback_manager)
+app = app = EnterpriseDash(__name__, title='deepts', background_callback_manager=background_callback_manager)
 
 app.setup_shortcuts(
     logo=get_asset_url('logo.gif'),
