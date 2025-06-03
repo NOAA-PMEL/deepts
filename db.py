@@ -19,9 +19,10 @@ def get_by_stride(site_code, total_est, start_date, end_date):
     millis2 =   end_date*1000000000
     selection = 'select s.* from (select t.*,row_number() over(order by t.millis) as rnk from {} t where t.site_code="{}" AND t.millis between {} and {}) s where mod(s.rnk,( {}/20000)) = 0'
     print(selection.format(constants.data_table, site_code, millis1, millis2, round(total_est)))
-    stored_df = pd.read_sql(
-        selection.format(constants.data_table, site_code, millis1, millis2, round(total_est)), constants.postgres_engine
-    )
+    with constants.postgres_engine.connect() as conn:
+        stored_df = pd.read_sql(
+            selection.format(constants.data_table, site_code, millis1, millis2, round(total_est)), con=conn.connection
+        )
     return stored_df
 
 

@@ -4,7 +4,7 @@ plotly>=6.0.1
 celery
 gunicorn
 redis
-pandas
+pandas==2.1.4
 pg8000
 SQLAlchemy
 colorcet
